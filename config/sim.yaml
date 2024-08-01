@@ -1,6 +1,6 @@
 front_cloud_to_scan:
   ros__parameters:
-    use_sim_time: False
+    use_sim_time: True
     frame_id: front_camera_link
     pointcloud_topic: /front_camera/points
     scan_topic: /front_camera/scan
@@ -17,6 +17,7 @@ front_cloud_to_scan:
 
 path_mapping:
   ros__parameters:
+    use_sim_time: True
     frequency: 30
     front_scan_topic: /front_camera/scan
     rear_scan_topic: /rear_camera/scan
@@ -24,7 +25,7 @@ path_mapping:
     rear_scan_position: [ -2.2, 0.0, 0.0 ]
     map_topic: /map
     map_infiltration_radius: 2.5
-    map_size: 200
+    map_size: 40
     local_map_size: 40
     map_resolution: 0.1
     map_frame: map

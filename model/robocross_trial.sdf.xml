@@ -24,8 +24,8 @@
         </spherical_coordinates>
 
         <physics name="1ms" type="ignored">
-            <max_step_size>0.01</max_step_size>
-            <real_time_factor>1.</real_time_factor>
+            <max_step_size>0.05</max_step_size>
+            <real_time_factor>0.2</real_time_factor>
         </physics>
         <plugin
             filename="gz-sim-imu-system"
@@ -53,7 +53,7 @@
             <render_engine>ogre2</render_engine>
         </plugin>
 
-        <light type="directional"
+        <!-- <light type="directional"
             name="sun">
             <cast_shadows>true</cast_shadows>
             <pose>0 0 10 0 0 0</pose>
@@ -66,7 +66,7 @@
                 <quadratic>0.001</quadratic>
             </attenuation>
             <direction>-0.5 0.1 -0.9</direction>
-        </light>
+        </light> -->
 
         <model name="ground_plane">
             <static>true</static>
@@ -3122,7 +3122,8 @@
                 <sensor name='gpu_lidar' type='gpu_lidar'>"<!-- <pose relative_to='chassis'>0 0 0
                         0 0 0</pose> -->
                     <gz_frame_id>front_camera_link</gz_frame_id>
-                    <topic>/front_camera</topic>
+                    <topic>
+                    /front_camera</topic>
                     <update_rate>10</update_rate>
                     <ray>
                         <scan>
@@ -3590,7 +3591,7 @@
                 name="gz::sim::systems::OdometryPublisher">
                 <odom_frame>odom</odom_frame>
                 <robot_base_frame>chassis</robot_base_frame>
-                <odom_publish_frequency>50</odom_publish_frequency>
+                <odom_publish_frequency>10</odom_publish_frequency>
                 <odom_topic>/odometry</odom_topic>
                 <odom_covariance_topic>/odometry_with_covariance</odom_covariance_topic>
                 <tf_topic>/tf</tf_topic>

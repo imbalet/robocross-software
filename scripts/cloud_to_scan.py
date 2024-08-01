@@ -43,7 +43,7 @@ class CloudToScan(Node):
 
     def __init__(self, node_name: str):
         super().__init__(node_name)
-
+        self.get_logger().warn('version1')
         self.declare_parameter('pointcloud_topic', '/front_camera/points')
         self.declare_parameter('scan_topic', '/front_camera/scan')
         self.declare_parameter('frequency', 30)
@@ -99,26 +99,17 @@ class CloudToScan(Node):
     def pointcloud_to_scan(self):
         data = rnp.numpify(self.pcData)
         data = np.array(data['xyz'], dtype=np.float32)
-        condition = data[:, 2] < self.zMax
+        condition = (data[:, 2] < self.zMax) & (data[:, 2] > self.zMin) & (data[:, 1] < self.yMax) & \
+                    (data[:, 1] > self.yMin) & (data[:, 0] < self.xMax) & (data[:, 0] > self.xMin)
         data = data[condition]
-        condition = data[:, 2] > self.zMin
-        data = data[condition]
-        condition = data[:, 1] < self.yMax
-        data = data[condition]
-        condition = data[:, 1] > self.yMin
-        data = data[condition]
-        condition = data[:, 0] < self.xMax
-        data = data[condition]
-        condition = data[:, 0] > self.xMin
-        data = data[condition]
+        lim = self.scanData.shape[0]
         for x, y, z in data:
             rad, a = decart_to_polar(x, y)
-            try:
-                i = np.where(self.scanData[:, 0] > a)[0][0]
-                if self.scanData[i, 1] == 0:
-                    self.scanData[i, 1] = rad
-            except IndexError:
-                pass
+            # i = np.where(self.scanData[:, 0] > a)[0][0]
+            i = int((a - self.angleMin) // self.angleIncrement + 1)
+            if i < 0 or i > lim: continue
+            if self.scanData[i, 1] == 0:
+                self.scanData[i, 1] = rad
 
     def timer_callback(self):
         if self.pcData != PointCloud2():

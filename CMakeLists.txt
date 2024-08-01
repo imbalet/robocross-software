@@ -2,12 +2,13 @@ cmake_minimum_required(VERSION 3.8)
 project(car_bot)
 
 if(NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 14)
+  set(CMAKE_CXX_STANDARD 17)
 endif()
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_compile_options(-Wall -Wextra -Wpedantic)
+  add_compile_options(-Wall -Wextra -Wpedantic -g)
 endif()
 
 # find dependencies
@@ -19,11 +20,39 @@ find_package(rclpy REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(pcl_conversions REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
+find_package(OpenCV REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 
-include_directories(include)
+
+include_directories(include /opt/ros/humble/include/ /usr/include/eigen3 /usr/include/opencv4/)
+
+add_executable(pc2scan src/pc2scan.cpp)
+ament_target_dependencies(pc2scan rclcpp std_msgs sensor_msgs)
+
+add_executable(path_mapping src/path_mapping.cpp)
+ament_target_dependencies(
+  path_mapping 
+  rclcpp 
+  std_msgs 
+  sensor_msgs 
+  geometry_msgs 
+  nav_msgs 
+  tf2 
+  tf2_ros)
+
+target_link_libraries(path_mapping ${OpenCV_LIBS})
+
+install(TARGETS
+   pc2scan
+   path_mapping
+   DESTINATION lib/${PROJECT_NAME}
+ )
+
 
 
 # add_executable(imu src/imu.cpp)
@@ -44,6 +73,7 @@ install(PROGRAMS
   scripts/path_controller.py
   scripts/path_mapping.py
   scripts/utils.py
+  scripts/pc2scan.py
   scripts/waypoint_following.py
   DESTINATION lib/${PROJECT_NAME}
 )
