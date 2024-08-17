@@ -1,4 +1,5 @@
 #include <chrono>
+#include <cmath>
 #include <functional>
 #include <memory>
 #include <string>
@@ -10,7 +11,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/opencv.hpp>
 
-#include <sstream>
+#include <iostream>
 
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "geometry_msgs/msg/transform_stamped.hpp"
@@ -20,6 +21,10 @@
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "nav_msgs/msg/path.hpp"
+
+#include "Grid.hpp"
+
+int robot_x_, robot_y_;
 
 std::vector<double> euler_from_quaternion(double x, double y, double z,
                                           double w) {
@@ -122,6 +127,7 @@ public:
 
     mapArray.resize(std::pow(mapSize / mapRes, 2), FREE_CELL);
     robotPos.resize(2, 0);
+    map = new gr::Grid<signed char>(3, localMapSize / 3, mapRes, 0, 0, 127);
   }
 
 private:
@@ -158,6 +164,7 @@ private:
   nav_msgs::msg::Odometry odom_data = nav_msgs::msg::Odometry();
   sensor_msgs::msg::LaserScan front_scan_data = sensor_msgs::msg::LaserScan();
   sensor_msgs::msg::LaserScan rear_scan_data = sensor_msgs::msg::LaserScan();
+  gr::Grid<signed char> *map;
 
   std::vector<std::vector<double>>
   robot_to_global(std::vector<double> robot_pos, double robot_orientation,
@@ -167,19 +174,20 @@ private:
     std::vector<double> lidar_offset_y(angles.size());
 
     for (size_t i = 0; i < angles.size(); ++i) {
-      //первод из полярных в декартовы и применение смещения относительно робота
+      // первод из полярных в декартовы и применение смещения относительно
+      // робота
       lidar_offset_x[i] = distanties[i] * cos(angles[i]) + lidar_pos[0];
       lidar_offset_y[i] = distanties[i] * sin(angles[i]) + lidar_pos[1];
     }
-    //для матрицы поворота
+    // для матрицы поворота
     double cos_theta = cos(robot_orientation);
     double sin_theta = sin(robot_orientation);
 
     std::vector<std::vector<double>> global_coords(angles.size(),
                                                    std::vector<double>(2));
 
-    //применяет матрицу поворота и смещение
-    //сразу пишет в матрицу вида [[x0, y0],[x1, y1]]
+    // применяет матрицу поворота и смещение
+    // сразу пишет в матрицу вида [[x0, y0],[x1, y1]]
     for (size_t i = 0; i < angles.size(); ++i) {
       global_coords[i][0] = lidar_offset_x[i] * cos_theta -
                             lidar_offset_y[i] * sin_theta + robot_pos[0];
@@ -198,7 +206,7 @@ private:
 
   void scan_to_local_map() {
     if (front_scan_data.ranges.size() > 0) {
-      int map_center = static_cast<int>(mapSize / (2.0 * mapRes));
+      int map_center = static_cast<int>(map->size_m() / (2.0 * mapRes));
       std::vector<double> angles(front_scan_data.ranges.size());
       for (size_t i = 0; i < angles.size(); ++i) {
         angles[i] =
@@ -213,18 +221,21 @@ private:
       int base_y = static_cast<int>(map_center + robotPos[1] / mapRes +
                                     frontScanPos[1] / mapRes);
 
-      auto src_point = cv::Point(base_x, base_y);
+      // auto src_point = cv::Point(base_x, base_y);
 
-      cv::Mat image(mapSize / mapRes, mapSize / mapRes, CV_8UC1,
-                    mapArray.data());
+      // cv::Mat image(mapSize / mapRes, mapSize / mapRes, CV_8UC1,
+      //               mapArray.data());
       std::vector<cv::Point> points;
+
+      int size = map->size();
+
       for (auto coord : coords) {
         auto x = map_center + static_cast<int>(coord[0] / mapRes);
         auto y = map_center + static_cast<int>(coord[1] / mapRes);
         auto dst_point = cv::Point(x, y);
-        if (static_cast<size_t>(std::max(std::abs(x), std::abs(y))) <
-            (mapSize / mapRes)) {
-          cv::line(image, src_point, dst_point, FREE_CELL, 1);
+        this->map->drawline(base_x, base_y, x, y, FREE_CELL);
+        if (std::max(std::abs(x), std::abs(y)) < size) {
+          // cv::line(image, src_point, dst_point, FREE_CELL, 1);
           points.push_back(dst_point);
           // cv::circle(image, dst_point, robotColRadius / mapRes, 70, -1);
         }
@@ -234,10 +245,11 @@ private:
       //   auto y = map_center + static_cast<int>(coord[1] / mapRes);
       //   mapArray[y * (mapSize / mapRes) + x] = OBSTACLE_CELL;
       // }
+      // for (cv::Point point : points) {
+      //   cv::circle(image, point, robotColRadius / mapRes, 70, -1);
+      // }
       for (cv::Point point : points) {
-        cv::circle(image, point, robotColRadius / mapRes, 70, -1);
-      }
-      for (cv::Point point : points) {
+        this->map->get_map_by_ind(point.y, point.x) = OBSTACLE_CELL;
         mapArray[point.y * (mapSize / mapRes) + point.x] = OBSTACLE_CELL;
       }
     }
@@ -255,18 +267,63 @@ private:
     robotPos[1] = msg->pose.pose.position.y;
     auto q = msg->pose.pose.orientation;
     robotYaw = euler_from_quaternion(q.x, q.y, q.z, q.w)[2];
+    // нужно пофиксить в классе
+    update_map();
   }
 
   void publish_tf() {
+    auto map_center = map->get_center_coord();
     auto msg = geometry_msgs::msg::TransformStamped();
     msg.header.stamp = this->get_clock()->now();
     msg.header.frame_id = mapFrame;
     msg.child_frame_id = robotBaseFrame;
-    msg.transform.translation.x = odom_data.pose.pose.position.x;
-    msg.transform.translation.y = odom_data.pose.pose.position.y;
+    // msg.transform.translation.x = 0;
+    // map_center.first + odom_data.pose.pose.position.x;
+    // msg.transform.translation.y =
+    // map_center.second + odom_data.pose.pose.position.y;
     msg.transform.translation.z = odom_data.pose.pose.position.z + 1.065;
-    msg.transform.rotation = odom_data.pose.pose.orientation;
+    // msg.transform.rotation = odom_data.pose.pose.orientation;
     tf_broadcaster->sendTransform(msg);
+  }
+
+  void update_map() {
+    double robot_x = odom_data.pose.pose.position.x;
+    double robot_y = odom_data.pose.pose.position.y;
+
+    // double robot_x = robotPos[0];
+    // double robot_y = robotPos[1];
+
+    // индексы частей по кордам робота
+    // auto inds = map->get_part_inds_by_map_inds(robot_y, robot_x);
+
+    auto inds = map->get_part_inds_by_coords(robot_x, robot_y);
+
+    // середина карты
+    auto mid = map->get_mid();
+
+    if (inds.first < mid.first) {
+      // map->add_row(0);
+      map->add_row_go(0);
+      map->parts_to_map();
+      map->print_all();
+
+    } else if (inds.first > mid.first) {
+      // map->add_row(1);
+      map->add_row_go(1);
+      map->parts_to_map();
+      map->print_all();
+    }
+    if (inds.second < mid.second) {
+      // map->add_col(0);
+      map->add_col_go(0);
+      map->parts_to_map();
+      map->print_all();
+    } else if (inds.second > mid.second) {
+      // map->add_col(1);
+      map->add_col_go(1);
+      map->parts_to_map();
+      map->print_all();
+    }
   }
 
   void publish_map() {
@@ -282,18 +339,24 @@ private:
     //   }
     // }
 
-    std::vector<signed char> data(mapArray.begin(), mapArray.end());
+    // std::vector<signed char> data(mapArray.begin(), mapArray.end());
+    // int size = ((localMapSize / 3) / mapRes) * 3;
 
-    auto map = nav_msgs::msg::OccupancyGrid();
-    map.data = data;
-    map.header.stamp = this->get_clock()->now();
-    map.header.frame_id = mapFrame;
-    map.info.width = mapSize / mapRes;
-    map.info.height = mapSize / mapRes;
-    map.info.resolution = mapRes;
-    map.info.origin.position.x = -mapSize / 2.0;
-    map.info.origin.position.y = -mapSize / 2.0;
-    mapPub->publish(map);
+    this->map->map[0] = 12;
+    this->map->map[1] = 12;
+
+    auto origin = map->get_origin();
+    auto map_p = nav_msgs::msg::OccupancyGrid();
+    map_p.data = this->map->map;
+    map_p.header.stamp = this->get_clock()->now();
+    map_p.header.frame_id = mapFrame;
+    map_p.info.width = map->size();
+    map_p.info.height = map->size();
+    map_p.info.resolution = mapRes;
+    // Пофиксить. В классе поправить ориджин с центрального парт на левый нижний
+    map_p.info.origin.position.x = origin.first;
+    map_p.info.origin.position.y = origin.second;
+    mapPub->publish(map_p);
   }
 };
 

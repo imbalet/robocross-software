@@ -436,7 +436,7 @@ class PathMapping(Node):
         self.declare_parameter('map_resolution', 0.1)
         self.declare_parameter('map_frame', 'map')
         self.declare_parameter('map_infiltration_radius', 2.5)
-        self.declare_parameter('map_size', 150)
+        self.declare_parameter('map_size', 40)
         self.declare_parameter('local_map_size', 20)
 
         self.declare_parameter('odom_topic', '/odom')
