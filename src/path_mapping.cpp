@@ -22,9 +22,7 @@
 #include "nav_msgs/msg/odometry.hpp"
 #include "nav_msgs/msg/path.hpp"
 
-#include "Grid.hpp"
-
-int robot_x_, robot_y_;
+#include "Map.hpp"
 
 std::vector<double> euler_from_quaternion(double x, double y, double z,
                                           double w) {
@@ -64,7 +62,7 @@ public:
     this->declare_parameter("map_frame", "map");
     this->declare_parameter("map_infiltration_radius", 2.5);
     this->declare_parameter("map_size", 40);
-    this->declare_parameter("local_map_size", 40);
+    this->declare_parameter("local_map_size", 20);
     this->declare_parameter("odom_topic", "/odom");
     this->declare_parameter("robot_base_frame", "chassis");
     this->declare_parameter("goal_topic", "/goal_pose");
@@ -127,12 +125,12 @@ public:
 
     mapArray.resize(std::pow(mapSize / mapRes, 2), FREE_CELL);
     robotPos.resize(2, 0);
-    map = new gr::Grid<signed char>(3, localMapSize / 3, mapRes, 0, 0, 127);
+    map = new map::Map<signed char>(localMapSize, 0.1, 0, 0, 127);
   }
 
 private:
   const unsigned char FREE_CELL = 0;
-  const unsigned char UNKNOWN_CELL = 255;
+  // const unsigned char UNKNOWN_CELL = 255;
   const unsigned char OBSTACLE_CELL = 100;
 
   std::string robotBaseFrame;
@@ -164,7 +162,7 @@ private:
   nav_msgs::msg::Odometry odom_data = nav_msgs::msg::Odometry();
   sensor_msgs::msg::LaserScan front_scan_data = sensor_msgs::msg::LaserScan();
   sensor_msgs::msg::LaserScan rear_scan_data = sensor_msgs::msg::LaserScan();
-  gr::Grid<signed char> *map;
+  map::Map<signed char> *map;
 
   std::vector<std::vector<double>>
   robot_to_global(std::vector<double> robot_pos, double robot_orientation,
@@ -206,7 +204,7 @@ private:
 
   void scan_to_local_map() {
     if (front_scan_data.ranges.size() > 0) {
-      int map_center = static_cast<int>(map->size_m() / (2.0 * mapRes));
+      // int map_center = static_cast<int>(map->size_m() / (2.0 * mapRes));
       std::vector<double> angles(front_scan_data.ranges.size());
       for (size_t i = 0; i < angles.size(); ++i) {
         angles[i] =
@@ -216,41 +214,26 @@ private:
       auto coords = robot_to_global(robotPos, robotYaw, frontScanPos,
                                     front_scan_data.ranges, angles);
 
-      int base_x = static_cast<int>(map_center + robotPos[0] / mapRes +
-                                    frontScanPos[0] / mapRes);
-      int base_y = static_cast<int>(map_center + robotPos[1] / mapRes +
-                                    frontScanPos[1] / mapRes);
+      auto base = map->convert_inds_to_rviz_inds(map->get_inds_by_coords(
+          robotPos[0] + frontScanPos[0], robotPos[1] + frontScanPos[1]));
 
-      // auto src_point = cv::Point(base_x, base_y);
-
-      // cv::Mat image(mapSize / mapRes, mapSize / mapRes, CV_8UC1,
-      //               mapArray.data());
-      std::vector<cv::Point> points;
-
-      int size = map->size();
+      std::vector<std::pair<int, int>> points;
 
       for (auto coord : coords) {
-        auto x = map_center + static_cast<int>(coord[0] / mapRes);
-        auto y = map_center + static_cast<int>(coord[1] / mapRes);
-        auto dst_point = cv::Point(x, y);
-        this->map->drawline(base_x, base_y, x, y, FREE_CELL);
-        if (std::max(std::abs(x), std::abs(y)) < size) {
-          // cv::line(image, src_point, dst_point, FREE_CELL, 1);
-          points.push_back(dst_point);
-          // cv::circle(image, dst_point, robotColRadius / mapRes, 70, -1);
+        auto xy = map->convert_inds_to_rviz_inds(
+            map->get_inds_by_coords(coord[0], coord[1]));
+
+        this->map->drawline(base.first, base.second, xy.first, xy.second,
+                            FREE_CELL);
+        if (std::max(std::abs(xy.first), std::abs(xy.second)) <
+                localMapSize * 2 / mapRes &&
+            std::min(xy.first, xy.second) > 0) {
+          points.push_back(xy);
         }
       }
-      // for (auto coord : coords) {
-      //   auto x = map_center + static_cast<int>(coord[0] / mapRes);
-      //   auto y = map_center + static_cast<int>(coord[1] / mapRes);
-      //   mapArray[y * (mapSize / mapRes) + x] = OBSTACLE_CELL;
-      // }
-      // for (cv::Point point : points) {
-      //   cv::circle(image, point, robotColRadius / mapRes, 70, -1);
-      // }
-      for (cv::Point point : points) {
-        this->map->get_map_by_ind(point.y, point.x) = OBSTACLE_CELL;
-        mapArray[point.y * (mapSize / mapRes) + point.x] = OBSTACLE_CELL;
+
+      for (auto point : points) {
+        this->map->get_map_by_ind(point.second, point.first) = OBSTACLE_CELL;
       }
     }
   }
@@ -268,94 +251,74 @@ private:
     auto q = msg->pose.pose.orientation;
     robotYaw = euler_from_quaternion(q.x, q.y, q.z, q.w)[2];
     // нужно пофиксить в классе
-    update_map();
+    // update_map();
   }
 
   void publish_tf() {
-    auto map_center = map->get_center_coord();
+    // auto map_center = map->get_center_coord();
     auto msg = geometry_msgs::msg::TransformStamped();
     msg.header.stamp = this->get_clock()->now();
     msg.header.frame_id = mapFrame;
     msg.child_frame_id = robotBaseFrame;
-    // msg.transform.translation.x = 0;
-    // map_center.first + odom_data.pose.pose.position.x;
-    // msg.transform.translation.y =
-    // map_center.second + odom_data.pose.pose.position.y;
+    msg.transform.translation.x = odom_data.pose.pose.position.x;
+    msg.transform.translation.y = odom_data.pose.pose.position.y;
     msg.transform.translation.z = odom_data.pose.pose.position.z + 1.065;
-    // msg.transform.rotation = odom_data.pose.pose.orientation;
+    msg.transform.rotation = odom_data.pose.pose.orientation;
     tf_broadcaster->sendTransform(msg);
   }
 
-  void update_map() {
-    double robot_x = odom_data.pose.pose.position.x;
-    double robot_y = odom_data.pose.pose.position.y;
+  // void update_map() {
+  //   double robot_x = odom_data.pose.pose.position.x;
+  //   double robot_y = odom_data.pose.pose.position.y;
 
-    // double robot_x = robotPos[0];
-    // double robot_y = robotPos[1];
+  //   // double robot_x = robotPos[0];
+  //   // double robot_y = robotPos[1];
 
-    // индексы частей по кордам робота
-    // auto inds = map->get_part_inds_by_map_inds(robot_y, robot_x);
+  //   // индексы частей по кордам робота
+  //   // auto inds = map->get_part_inds_by_map_inds(robot_y, robot_x);
 
-    auto inds = map->get_part_inds_by_coords(robot_x, robot_y);
+  //   auto inds = map->get_part_inds_by_coords(robot_x, robot_y);
 
-    // середина карты
-    auto mid = map->get_mid();
+  //   // середина карты
+  //   auto mid = map->get_mid();
 
-    if (inds.first < mid.first) {
-      // map->add_row(0);
-      map->add_row_go(0);
-      map->parts_to_map();
-      map->print_all();
+  //   if (inds.first < mid.first) {
+  //     // map->add_row(0);
+  //     map->add_row_go(0);
+  //     map->parts_to_map();
+  //     map->print_all();
 
-    } else if (inds.first > mid.first) {
-      // map->add_row(1);
-      map->add_row_go(1);
-      map->parts_to_map();
-      map->print_all();
-    }
-    if (inds.second < mid.second) {
-      // map->add_col(0);
-      map->add_col_go(0);
-      map->parts_to_map();
-      map->print_all();
-    } else if (inds.second > mid.second) {
-      // map->add_col(1);
-      map->add_col_go(1);
-      map->parts_to_map();
-      map->print_all();
-    }
-  }
+  //   } else if (inds.first > mid.first) {
+  //     // map->add_row(1);
+  //     map->add_row_go(1);
+  //     map->parts_to_map();
+  //     map->print_all();
+  //   }
+  //   if (inds.second < mid.second) {
+  //     // map->add_col(0);
+  //     map->add_col_go(0);
+  //     map->parts_to_map();
+  //     map->print_all();
+  //   } else if (inds.second > mid.second) {
+  //     // map->add_col(1);
+  //     map->add_col_go(1);
+  //     map->parts_to_map();
+  //     map->print_all();
+  //   }
+  // }
 
   void publish_map() {
 
-    // std::vector<signed char> data(
-    //     reinterpret_cast<signed char *>(mapArray.data()), mapArray.size());
-
-    // for (size_t i = 0; i < mapArray.size(); ++i) {
-    //   if (mapArray[i] > 127) {
-    //     data[i] = 100;
-    //   } else {
-    //     data[i] = static_cast<signed char>(mapArray[i]);
-    //   }
-    // }
-
-    // std::vector<signed char> data(mapArray.begin(), mapArray.end());
-    // int size = ((localMapSize / 3) / mapRes) * 3;
-
-    this->map->map[0] = 12;
-    this->map->map[1] = 12;
-
-    auto origin = map->get_origin();
+    // auto origin = map->get_origin();
     auto map_p = nav_msgs::msg::OccupancyGrid();
     map_p.data = this->map->map;
     map_p.header.stamp = this->get_clock()->now();
     map_p.header.frame_id = mapFrame;
-    map_p.info.width = map->size();
-    map_p.info.height = map->size();
+    map_p.info.width = map->width;
+    map_p.info.height = map->height;
     map_p.info.resolution = mapRes;
-    // Пофиксить. В классе поправить ориджин с центрального парт на левый нижний
-    map_p.info.origin.position.x = origin.first;
-    map_p.info.origin.position.y = origin.second;
+    map_p.info.origin.position.x = -mapSize / 2.0;
+    map_p.info.origin.position.y = -mapSize / 2.0;
     mapPub->publish(map_p);
   }
 };
