@@ -18,6 +18,7 @@ private:
 
 public:
   std::vector<T> map;
+  std::vector<T> local_map;
   int width;
   int height;
 
@@ -52,6 +53,23 @@ public:
   std::pair<int, int> convert_inds_to_rviz_inds(std::pair<int, int> xy) {
     return convert_inds_to_rviz_inds(xy.first, xy.second);
   }
+
+  
+
+  void to_local_map(int x_center, int y_center) {
+    int x_start = x_center - local_map_size / 2,
+        y_start = y_center - local_map_size / 2;
+    int x_stop = x_start + local_map_size, y_stop = x_start + local_map_size;
+
+    for (int row = y_start; row < y_stop; ++row) {
+      for (int col = x_start; col < x_stop; ++col) {
+        int local_col = (local_map_size - 1) - (row - y_start),
+            local_row = (local_map_size - 1) - (col - x_start);
+        local_map.at(local_row * local_map_size + local_col) =
+            get_map_by_ind(row, col);
+      }
+    }
+  }
 };
 
 /*
@@ -65,9 +83,10 @@ public:
 template <typename T>
 Map<T>::Map(int local_map_size, double res, bool x_direction, bool y_direction,
             T default_value)
-    : local_map_size(local_map_size), default_value(default_value), res(res),
-      x_direction(x_direction), y_direction(y_direction),
-      map(std::pow(local_map_size * 2 / res, 2), default_value) {
+    : local_map_size(local_map_size / res), default_value(default_value),
+      res(res), x_direction(x_direction), y_direction(y_direction),
+      map(std::pow(local_map_size * 2 / res, 2), default_value),
+      local_map(std::pow(local_map_size / res, 2), default_value) {
 
   width = local_map_size * 2 / res;
   height = local_map_size * 2 / res;

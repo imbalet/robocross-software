@@ -50,7 +50,7 @@ class Mapping : public rclcpp::Node {
 public:
   Mapping() : Node("mapping") {
 
-    this->declare_parameter("frequency", 30);
+    this->declare_parameter("frequency", 100);
     this->declare_parameter("front_scan_topic", "/front_camera/scan");
     this->declare_parameter("rear_scan_topic", "/rear_camera/scan");
     this->declare_parameter("front_scan_position",
@@ -203,6 +203,9 @@ private:
   }
 
   void scan_to_local_map() {
+    auto c = map->get_inds_by_coords(robotPos[0], robotPos[1]);
+    map->to_local_map(c.first, c.second);
+
     if (front_scan_data.ranges.size() > 0) {
       // int map_center = static_cast<int>(map->size_m() / (2.0 * mapRes));
       std::vector<double> angles(front_scan_data.ranges.size());
@@ -225,9 +228,8 @@ private:
 
         this->map->drawline(base.first, base.second, xy.first, xy.second,
                             FREE_CELL);
-        if (std::max(std::abs(xy.first), std::abs(xy.second)) <
-                localMapSize * 2 / mapRes &&
-            std::min(xy.first, xy.second) > 0) {
+        if ((xy.first > 0 && xy.first < map->width) &&
+            (xy.second > 0 && xy.second < map->height)) {
           points.push_back(xy);
         }
       }
@@ -250,8 +252,10 @@ private:
     robotPos[1] = msg->pose.pose.position.y;
     auto q = msg->pose.pose.orientation;
     robotYaw = euler_from_quaternion(q.x, q.y, q.z, q.w)[2];
-    // нужно пофиксить в классе
-    // update_map();
+
+    // auto c = map->get_inds_by_coords(msg->pose.pose.position.x,
+    //                                  msg->pose.pose.position.y);
+    // map->to_local_map(c.first, c.second);
   }
 
   void publish_tf() {
@@ -311,14 +315,14 @@ private:
 
     // auto origin = map->get_origin();
     auto map_p = nav_msgs::msg::OccupancyGrid();
-    map_p.data = this->map->map;
+    map_p.data = this->map->local_map;
     map_p.header.stamp = this->get_clock()->now();
     map_p.header.frame_id = mapFrame;
-    map_p.info.width = map->width;
-    map_p.info.height = map->height;
+    map_p.info.width = localMapSize / mapRes;
+    map_p.info.height = localMapSize / mapRes;
     map_p.info.resolution = mapRes;
-    map_p.info.origin.position.x = -mapSize / 2.0;
-    map_p.info.origin.position.y = -mapSize / 2.0;
+    map_p.info.origin.position.x = -localMapSize / 2.0;
+    map_p.info.origin.position.y = -localMapSize / 2.0;
     mapPub->publish(map_p);
   }
 };
