@@ -43,6 +43,7 @@ class PathController(Node):
         self.cmdPub = self.create_publisher(Twist,
                                             cmd_topic,
                                             10)
+        
 
         self.mainTimer = self.create_timer(1 / frequency, self.timer_callback)
 

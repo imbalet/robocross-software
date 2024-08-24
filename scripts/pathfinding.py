@@ -245,16 +245,16 @@ class AstarFinder:
                 return 'End of second u-turn step'
 
 
-# a = np.zeros((100, 100), dtype=np.uint8)
-# cv2.circle(a, [50, 50], 40, [70], -1)
-# gr = Grid(np.copy(a), 0.24, 5)
-# finder = AstarFinder(5, 1, 20)
-#
-# path = finder.get_path(gr, [15, 15, 0], [85, 85])
-# if type(path) is list:
-#     for p in path:
-#         cv2.circle(a, [p[0], p[1]], 2, [255], -1)
-# else:
-#     print(path)
-# cv2.imshow('Image', a)
-# cv2.waitKey(0)
+a = np.zeros((100, 100), dtype=np.uint8)
+cv2.circle(a, [50, 50], 40, [70], -1)
+gr = Grid(np.copy(a), 0.24, 5)
+finder = AstarFinder(5, 1, 20)
+
+path = finder.get_path(gr, [15, 15, 0], [85, 85])
+if type(path) is list:
+    for p in path:
+        cv2.circle(a, [p[0], p[1]], 2, [255], -1)
+else:
+    print(path)
+cv2.imshow('Image', a)
+cv2.waitKey(0)

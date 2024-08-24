@@ -1,6 +1,7 @@
 #include <chrono>
 #include <cmath>
 #include <functional>
+#include <geometry_msgs/msg/detail/pose_stamped__struct.hpp>
 #include <memory>
 #include <string>
 #include <vector>
@@ -103,6 +104,7 @@ public:
     mainTimer =
         this->create_wall_timer(std::chrono::milliseconds(1000 / frequency),
                                 std::bind(&Mapping::timer_callback, this));
+
     frontScanSub = this->create_subscription<sensor_msgs::msg::LaserScan>(
         front_scan_topic, 10,
         [this](const sensor_msgs::msg::LaserScan::SharedPtr msg) {
@@ -120,8 +122,20 @@ public:
           this->odom_callback(msg);
         });
 
+    goalSub = this->create_subscription<geometry_msgs::msg::PoseStamped>(
+        goal_topic, 10,
+        [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
+          this->goal_callback(msg);
+        });
+
     mapPub =
         this->create_publisher<nav_msgs::msg::OccupancyGrid>(map_topic, 10);
+
+    fullMapPub = this->create_publisher<nav_msgs::msg::OccupancyGrid>(
+        map_topic + "full", 10);
+
+    globalMapPub =
+        this->create_publisher<nav_msgs::msg::OccupancyGrid>("dadad", 10);
 
     mapArray.resize(std::pow(mapSize / mapRes, 2), FREE_CELL);
     robotPos.resize(2, 0);
@@ -129,9 +143,9 @@ public:
   }
 
 private:
-  const unsigned char FREE_CELL = 0;
+  const signed char FREE_CELL = 0;
   // const unsigned char UNKNOWN_CELL = 255;
-  const unsigned char OBSTACLE_CELL = 100;
+  const signed char OBSTACLE_CELL = 100;
 
   std::string robotBaseFrame;
   std::string mapFrame;
@@ -154,20 +168,25 @@ private:
   rclcpp::TimerBase::SharedPtr mainTimer;
   rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr frontScanSub;
   rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr rearScanSub;
+  rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr goalSub;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odomSub;
   rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr mapPub;
+  rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr fullMapPub;
+  rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr globalMapPub;
 
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster;
 
   nav_msgs::msg::Odometry odom_data = nav_msgs::msg::Odometry();
   sensor_msgs::msg::LaserScan front_scan_data = sensor_msgs::msg::LaserScan();
   sensor_msgs::msg::LaserScan rear_scan_data = sensor_msgs::msg::LaserScan();
+  geometry_msgs::msg::PoseStamped goal_data = geometry_msgs::msg::PoseStamped();
   map::Map<signed char> *map;
 
   std::vector<std::vector<double>>
   robot_to_global(std::vector<double> robot_pos, double robot_orientation,
                   std::vector<double> lidar_pos, std::vector<float> distanties,
                   std::vector<double> angles) {
+
     std::vector<double> lidar_offset_x(angles.size());
     std::vector<double> lidar_offset_y(angles.size());
 
@@ -200,11 +219,31 @@ private:
     publish_tf();
     scan_to_local_map();
     publish_map();
+
+    // if self.goalData != PoseStamped():
+    // if not is_in_goal(self.odomData, self.goalData, self.goalRad):
+    //     map_array = np.copy(self.mapArray)
+    //     self.grid.init_grid(self.mapArray)
+    //     x2, y2, uturn = remap_goal_coord(self.goalData, self.mapArray,
+    //     self.mapRes) if uturn and self.finder.uturnState != 3:
+    //         path = self.finder.get_uturn(self.grid, (x1, y1, th1))
+    //     elif uturn and self.finder.uturnState == 3:
+    //         self.grid.neighbours = self.grid.forward_neighbours
+    //         path = self.finder.get_path(self.grid, (x1, y1, th1), (x2, y2))
+    //     else:
+    //         self.finder.uturnState = 0
+    //         path = self.finder.get_path(self.grid, (x1, y1, th1), (x2, y2))
+    //     if type(path) is list:
+    //         self.publish_path(path, map_array.shape)
+    //     else:
+    //         self.publish_path(None, map_array.shape)
+    //         self.get_logger().warn(path)
   }
 
   void scan_to_local_map() {
     auto c = map->get_inds_by_coords(robotPos[0], robotPos[1]);
-    map->to_local_map(c.first, c.second);
+
+    map->to_local_map(c.second, c.first);
 
     if (front_scan_data.ranges.size() > 0) {
       // int map_center = static_cast<int>(map->size_m() / (2.0 * mapRes));
@@ -217,27 +256,37 @@ private:
       auto coords = robot_to_global(robotPos, robotYaw, frontScanPos,
                                     front_scan_data.ranges, angles);
 
-      auto base = map->convert_inds_to_rviz_inds(map->get_inds_by_coords(
-          robotPos[0] + frontScanPos[0], robotPos[1] + frontScanPos[1]));
+      auto base = map->get_inds_by_coords(robotPos[0] + frontScanPos[0],
+                                          robotPos[1] + frontScanPos[1]);
 
       std::vector<std::pair<int, int>> points;
 
-      for (auto coord : coords) {
-        auto xy = map->convert_inds_to_rviz_inds(
-            map->get_inds_by_coords(coord[0], coord[1]));
+      for (size_t i = 0; i < coords.size(); ++i) {
+        if (front_scan_data.ranges[i] == 0) {
+          continue;
+        }
+        auto &coord = coords[i];
 
-        this->map->drawline(base.first, base.second, xy.first, xy.second,
+        auto xy = map->get_inds_by_coords(coord[0], coord[1]);
+
+        this->map->drawline(base.second, base.first, xy.second, xy.first,
                             FREE_CELL);
-        if ((xy.first > 0 && xy.first < map->width) &&
-            (xy.second > 0 && xy.second < map->height)) {
+        if ((xy.first > 0 && xy.first < map->height) &&
+            (xy.second > 0 && xy.second < map->width)) {
           points.push_back(xy);
         }
       }
 
       for (auto point : points) {
-        this->map->get_map_by_ind(point.second, point.first) = OBSTACLE_CELL;
+        this->map->get_map_by_ind(point.first, point.second) = OBSTACLE_CELL;
+        map->draw_circle(point, robotColRadius / mapRes, -1, {OBSTACLE_CELL});
       }
     }
+    map->map[0] = -10;
+    map->map[1] = -10;
+
+    map->get_map_by_ind(0, 0) = OBSTACLE_CELL;
+    map->get_map_by_ind(0, 1) = OBSTACLE_CELL;
   }
 
   void front_scan_callback(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
@@ -258,58 +307,28 @@ private:
     // map->to_local_map(c.first, c.second);
   }
 
+  void goal_callback(const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
+    goal_data = *msg;
+  }
+
   void publish_tf() {
     // auto map_center = map->get_center_coord();
     auto msg = geometry_msgs::msg::TransformStamped();
     msg.header.stamp = this->get_clock()->now();
     msg.header.frame_id = mapFrame;
     msg.child_frame_id = robotBaseFrame;
-    msg.transform.translation.x = odom_data.pose.pose.position.x;
-    msg.transform.translation.y = odom_data.pose.pose.position.y;
+    msg.transform.translation.x = 0;
+    msg.transform.translation.y = 0;
     msg.transform.translation.z = odom_data.pose.pose.position.z + 1.065;
     msg.transform.rotation = odom_data.pose.pose.orientation;
     tf_broadcaster->sendTransform(msg);
   }
 
-  // void update_map() {
-  //   double robot_x = odom_data.pose.pose.position.x;
-  //   double robot_y = odom_data.pose.pose.position.y;
-
-  //   // double robot_x = robotPos[0];
-  //   // double robot_y = robotPos[1];
-
-  //   // индексы частей по кордам робота
-  //   // auto inds = map->get_part_inds_by_map_inds(robot_y, robot_x);
-
-  //   auto inds = map->get_part_inds_by_coords(robot_x, robot_y);
-
-  //   // середина карты
-  //   auto mid = map->get_mid();
-
-  //   if (inds.first < mid.first) {
-  //     // map->add_row(0);
-  //     map->add_row_go(0);
-  //     map->parts_to_map();
-  //     map->print_all();
-
-  //   } else if (inds.first > mid.first) {
-  //     // map->add_row(1);
-  //     map->add_row_go(1);
-  //     map->parts_to_map();
-  //     map->print_all();
-  //   }
-  //   if (inds.second < mid.second) {
-  //     // map->add_col(0);
-  //     map->add_col_go(0);
-  //     map->parts_to_map();
-  //     map->print_all();
-  //   } else if (inds.second > mid.second) {
-  //     // map->add_col(1);
-  //     map->add_col_go(1);
-  //     map->parts_to_map();
-  //     map->print_all();
-  //   }
-  // }
+  bool is_in_goal(geometry_msgs::msg::PoseStamped goal) {
+    double x = goal.pose.position.x, y = goal.pose.position.y;
+    return ((x - goalRad) > robotPos[0] && (x + goalRad) < robotPos[0] &&
+            (y - goalRad) > robotPos[1] && (y + goalRad) < robotPos[1]);
+  }
 
   void publish_map() {
 
@@ -324,6 +343,17 @@ private:
     map_p.info.origin.position.x = -localMapSize / 2.0;
     map_p.info.origin.position.y = -localMapSize / 2.0;
     mapPub->publish(map_p);
+
+    auto map_p_gl = nav_msgs::msg::OccupancyGrid();
+    map_p_gl.data = this->map->map;
+    map_p_gl.header.stamp = this->get_clock()->now();
+    map_p_gl.header.frame_id = mapFrame;
+    map_p_gl.info.width = map->width;
+    map_p_gl.info.height = map->height;
+    map_p_gl.info.resolution = mapRes;
+    map_p_gl.info.origin.position.x = -mapSize / 2.0;
+    map_p_gl.info.origin.position.y = -mapSize / 2.0;
+    fullMapPub->publish(map_p_gl);
   }
 };
 
