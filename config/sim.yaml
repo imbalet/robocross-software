@@ -50,6 +50,14 @@ path_controller:
     p_steering_ratio: 3.0
     p_speed_ratio: 1.0
     average_speed: 1.3
+    goal_topic: /goal_pose
+    goal_radius: 2.
+    steering_value: 0.35
+    path_discrete: 1.5
+    map_resolution: 0.1
+    path_collision_radius: 1.5
+    timeout: 0.2
+    path_base_frame: map
 
 waypoint_following:
   ros__parameters:

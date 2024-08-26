@@ -139,7 +139,7 @@ public:
 
     mapArray.resize(std::pow(mapSize / mapRes, 2), FREE_CELL);
     robotPos.resize(2, 0);
-    map = new map::Map<signed char>(localMapSize, 0.1, 0, 0, 127);
+    map = new map::Map<signed char>(localMapSize, 0.1, 0, 0, 0);
   }
 
 private:
