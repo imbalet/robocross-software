@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+
+from tf2_ros import TransformBroadcaster
 import numpy as np
 import ros2_numpy as rnp
 from pathfinding import Grid, AstarFinder
@@ -8,7 +10,15 @@ import rclpy
 from rclpy.node import Node
 from utils import euler_from_quaternion, decart_to_polar
 from nav_msgs.msg import Path, Odometry, OccupancyGrid
-from geometry_msgs.msg import Twist, PoseStamped, Pose
+from geometry_msgs.msg import Twist, PoseStamped, Pose, TransformStamped
+
+
+
+
+
+
+
+
 
 
 def is_in_goal(current: Odometry, goal: PoseStamped, goal_rad: float):
@@ -78,6 +88,9 @@ class PathController(Node):
         self.pSteeringRatio = self.get_parameter('p_steering_ratio').get_parameter_value().double_value
         self.pSpeedRatio = self.get_parameter('p_speed_ratio').get_parameter_value().double_value
         self.goalRad = self.get_parameter('goal_radius').get_parameter_value().double_value
+        
+        
+        self.tfBroadcaster = TransformBroadcaster(self)
 
         self.pathSub = self.create_subscription(Path,
                                                 path_topic,
@@ -121,11 +134,20 @@ class PathController(Node):
         self.goalData = msg
 
 
-        
+    def publish_tf(self):
+        msg = TransformStamped()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.frame_id = self.pathBaseFrame
+        msg.child_frame_id = "path"
+        msg.transform.translation.x = -self.odomData.pose.pose.position.x
+        msg.transform.translation.y = -self.odomData.pose.pose.position.y
+        msg.transform.translation.z = 0.0
+        self.tfBroadcaster.sendTransform(msg)
 
 # ros2 param set /waypoint_following start_following True
 
     def timer_callback(self):
+        self.publish_tf()
         
         if self.goalData != PoseStamped() and self.mapData != OccupancyGrid():
             if not is_in_goal(self.odomData, self.goalData, self.goalRad):
@@ -145,12 +167,10 @@ class PathController(Node):
 
                 msg = Path()
                 msg.header.stamp = self.get_clock().now().to_msg()
-                msg.header.frame_id = self.pathBaseFrame
+                msg.header.frame_id = "path"
                 if isinstance(path, list):
                     for pose in path:
                         p = PoseStamped()
-                        p.header.frame_id = self.pathBaseFrame
-                        p.header.stamp = self.get_clock().now().to_msg()
                         p.pose.position.x = float(pose[0]) * self.mapRes - map_array.shape[0] * self.mapRes / 2
                         p.pose.position.y = float(pose[1]) * self.mapRes - map_array.shape[1] * self.mapRes / 2
                         p.pose.orientation.z = float(pose[2])
