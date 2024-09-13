@@ -25,7 +25,7 @@
 
         <physics name="1ms" type="ignored">
             <max_step_size>0.05</max_step_size>
-            <real_time_factor>0.2</real_time_factor>
+            <real_time_factor>1</real_time_factor>
         </physics>
         <plugin
             filename="gz-sim-imu-system"

@@ -5,6 +5,7 @@ from tf2_ros import TransformBroadcaster
 import numpy as np
 import ros2_numpy as rnp
 from pathfinding import Grid, AstarFinder
+from pathfinding1 import Astar
 import rclpy
 
 from rclpy.node import Node
@@ -12,7 +13,10 @@ from utils import euler_from_quaternion, decart_to_polar
 from nav_msgs.msg import Path, Odometry, OccupancyGrid
 from geometry_msgs.msg import Twist, PoseStamped, Pose, TransformStamped
 
+import os
+import json
 
+os.chdir(os.path.dirname(__file__))
 
 
 
@@ -57,9 +61,9 @@ class PathController(Node):
         self.declare_parameter('odom_topic', '/odom')
         self.declare_parameter('cmd_topic', '/cmd_vel')
         self.declare_parameter('frequency', 30)
-        self.declare_parameter('p_steering_ratio', 3.0)
+        self.declare_parameter('p_steering_ratio', 2.0)
         self.declare_parameter('p_speed_ratio', 1.)
-        self.declare_parameter('average_speed', 1.3)
+        self.declare_parameter('average_speed', 1.0)
         self.declare_parameter('map_topic', "/mapfull")
         self.declare_parameter('goal_topic', "/goal_pose")
         self.declare_parameter('goal_radius', 2.0)
@@ -116,6 +120,8 @@ class PathController(Node):
         self.mapData = OccupancyGrid()
         self.goalData = PoseStamped()
         
+        self.astar = Astar(self.pathCollisionRad / self.mapRes, self.goalRad / self.mapRes, self.steeringVal, self.pathDiscrete / self.mapRes)
+        
         self.grid = Grid(np.zeros((1, 1)), self.steeringVal, self.pathDiscrete / self.mapRes)
         self.finder = AstarFinder(self.pathCollisionRad / self.mapRes,
                                 10,
@@ -164,12 +170,14 @@ class PathController(Node):
                 else:
                     self.finder.uturnState = 0
                     path = self.finder.get_path(self.grid, (x1, y1, th1), (x2, y2))
+                
+                # path = self.astar.astar(map_array, (y1, x1, th1), (y2, x2))
 
                 msg = Path()
                 msg.header.stamp = self.get_clock().now().to_msg()
                 msg.header.frame_id = "path"
                 if isinstance(path, list):
-                    for pose in path:
+                    for pose in path[1:]:
                         p = PoseStamped()
                         p.pose.position.x = float(pose[0]) * self.mapRes - map_array.shape[0] * self.mapRes / 2
                         p.pose.position.y = float(pose[1]) * self.mapRes - map_array.shape[1] * self.mapRes / 2

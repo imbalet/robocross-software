@@ -259,7 +259,6 @@ template <typename T> void Map<T>::add_row(bool direction) {
 
 template <typename T> void Map<T>::add_col(bool direction) {
   // 1 - вперед
-  //  std::cerr << "ADDCOLLLL" << direction;
   auto old_width = width;
   width *= 2;
   if (direction) {

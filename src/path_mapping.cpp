@@ -159,7 +159,7 @@ private:
   std::vector<unsigned char> mapArray;
   std::string pathBaseFrame;
   double pathCollisionRad;
-  double robotYaw;
+  double robotYaw = 0;
   double goalRad;
   double steeringVal;
   double pathDiscrete;
@@ -243,7 +243,7 @@ private:
   void scan_to_local_map() {
     auto c = map->get_inds_by_coords(robotPos[0], robotPos[1]);
 
-    map->to_local_map(c.second, c.first);
+    // map->to_local_map(c.second, c.first);s
 
     if (front_scan_data.ranges.size() > 0) {
       // int map_center = static_cast<int>(map->size_m() / (2.0 * mapRes));
@@ -278,8 +278,14 @@ private:
       }
 
       for (auto point : points) {
+        // this->map->get_map_by_ind(point.first, point.second) = OBSTACLE_CELL;
+        map->draw_circle(point, robotColRadius / mapRes, 70, {});
+      }
+
+      for (auto point : points) {
         this->map->get_map_by_ind(point.first, point.second) = OBSTACLE_CELL;
-        map->draw_circle(point, robotColRadius / mapRes, 70, {OBSTACLE_CELL});
+        // map->draw_circle(point, robotColRadius / mapRes, 70,
+        // {OBSTACLE_CELL});
       }
     }
     map->map[0] = -10;
@@ -317,8 +323,8 @@ private:
     msg.header.stamp = this->get_clock()->now();
     msg.header.frame_id = mapFrame;
     msg.child_frame_id = robotBaseFrame;
-    msg.transform.translation.x = 0;
-    msg.transform.translation.y = 0;
+    msg.transform.translation.x = odom_data.pose.pose.position.x;
+    msg.transform.translation.y = odom_data.pose.pose.position.y;
     msg.transform.translation.z = odom_data.pose.pose.position.z + 1.065;
     msg.transform.rotation = odom_data.pose.pose.orientation;
     tf_broadcaster->sendTransform(msg);
@@ -351,8 +357,8 @@ private:
     map_p_gl.info.width = map->width;
     map_p_gl.info.height = map->height;
     map_p_gl.info.resolution = mapRes;
-    map_p_gl.info.origin.position.x = -mapSize / 2.0;
-    map_p_gl.info.origin.position.y = -mapSize / 2.0;
+    map_p_gl.info.origin.position.x = -mapSize;
+    map_p_gl.info.origin.position.y = -mapSize;
     fullMapPub->publish(map_p_gl);
   }
 };

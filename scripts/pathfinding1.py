@@ -4,6 +4,7 @@ import heapq
 
 from utils import polar_to_decart
 
+import cv2
 
 
 class Astar():
@@ -83,9 +84,9 @@ class Astar():
             (self.pathDisc, self.carSteer, 1.4),
             (self.pathDisc, 0.0, 1.0),
             (self.pathDisc, -self.carSteer, 1.4),
-            (-self.pathDisc, self.carSteer, 14.0),
-            (-self.pathDisc, 0.0, 10.0),
-            (-self.pathDisc, -self.carSteer, 14.0),
+            # (-self.pathDisc, self.carSteer, 14.0),
+            # (-self.pathDisc, 0.0, 10.0),
+            # (-self.pathDisc, -self.carSteer, 14.0),
         ]
     
 
@@ -102,6 +103,8 @@ class Astar():
             кортеж вида (row, collumn, orientation) представляющий 
             положение робота в сетке и его ориентацию
         """
+        
+        param = 0
         
         if matrix[start[0], start[1]] >= 127 or matrix[goal[0], goal[1]] >= 127:
             return None  # Начальная или конечная клетка занята
@@ -121,6 +124,8 @@ class Astar():
                 while current_node:
                     path.append((*current_node.position[:2], current_node.dir))
                     current_node = current_node.parent
+                if param:
+                    self.viz(matrix, path[::-1])
                 return path[::-1]  # Путь в правильном порядке
 
 
@@ -136,33 +141,58 @@ class Astar():
 
         return None  # Если путь не найден
 
+    def viz(self, matrix, path):
+        a= np.copy(matrix)
+        for i in range(len(path) - 1):
+            p = path[i]
+            p1 = path[i + 1]
+            # cv2.circle(a, [p[1], p[0]], 2, [255], -1)
+            cv2.line(a, (p[1], p[0]), (p1[1], p1[0]), [255] )
+        cv2.imshow('Image', a)
+        cv2.waitKey(0)
+        
+        
 
-import cv2
 
-a = np.zeros((100, 100), dtype=np.uint8)
-cv2.circle(a, [50, 50], 40, [70], -1)
+if __name__ == "__main__":
+    import os
+    import json
 
-a[20, 79] = 255
+    os.chdir(os.path.dirname(__file__))
+    with open("m.json") as f:
+        a = json.load(f)
 
-cv2.circle(a, [79, 24], 9, [255], -1)
+    # a = np.zeros((100, 100), dtype=np.uint8)
+    # cv2.circle(a, [50, 50], 40, [70], -1)
 
-finder = Astar(5, 5, 0.24, 5)
+    # a[20, 79] = 255
 
-path = finder.astar(a, (10, 10, 0), (85, 85))
+    # cv2.circle(a, [79, 24], 9, [255], -1)
 
-# path = finder.get_path(gr, [15, 15, 0], [85, 85])
-if type(path) is list:
-    for i in range(len(path) - 1):
-        p = path[i]
-        p1 = path[i + 1]
-        # cv2.circle(a, [p[1], p[0]], 2, [255], -1)
-        cv2.line(a, (p[1], p[0]), (p1[1], p1[0]), [255] )
-else:
+    a = np.array(a, np.uint8)
+
+    finder = Astar(15, 20, 0.3, 15)
+
+    path = finder.astar(a, (400, 399, 0), (301, 606))
+    cv2.circle(a, [399, 400], 9, [255], -1)
+    cv2.circle(a, [606, 301], 9, [255], -1)
+
+    cv2.imshow('Image', a)
+    cv2.waitKey(0)    
+
+    # path = finder.get_path(gr, [15, 15, 0], [85, 85])
+    if type(path) is list:
+        for i in range(len(path) - 1):
+            p = path[i]
+            p1 = path[i + 1]
+            # cv2.circle(a, [p[1], p[0]], 2, [255], -1)
+            cv2.line(a, (p[1], p[0]), (p1[1], p1[0]), [255] )
+    else:
+        print(path)
+
     print(path)
-
-print(path)
-    
+        
 
 
-cv2.imshow('Image', a)
-cv2.waitKey(0)
+    cv2.imshow('Image', a)
+    cv2.waitKey(0)

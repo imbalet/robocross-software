@@ -246,18 +246,28 @@ class AstarFinder:
                 return 'End of second u-turn step'
 
 
-a = np.zeros((100, 100), dtype=np.uint8)
-cv2.circle(a, [50, 50], 40, [70], -1)
-cv2.circle(a, [35, 14], 3, [255], -1)
-gr = Grid(np.copy(a), 0.24, 5)
-finder = AstarFinder(5, 1, 5)
+if __name__ == "__main__":
+    import os
+    import json
 
-path = finder.get_path(gr, [10, 10, 0], [85, 85])
-if type(path) is list:
-    for p in path:
-        cv2.circle(a, [p[0], p[1]], 2, [255], -1)
-else:
-    print(path)
-print(path)    
-cv2.imshow('Image', a)
-cv2.waitKey(0)
+    os.chdir(os.path.dirname(__file__))
+    with open("m.json") as f:
+        a = json.load(f)
+
+    a = np.array(a, np.uint8)
+
+    # a = np.zeros((100, 100), dtype=np.uint8)
+    # cv2.circle(a, [50, 50], 40, [70], -1)
+    # cv2.circle(a, [35, 14], 3, [255], -1)
+    gr = Grid(np.copy(a), 0.24, 5)
+    finder = AstarFinder(5, 1, 5)
+
+    path = finder.get_path(gr, (400, 399, -1.57), (606, 301))
+    if type(path) is list:
+        for p in path:
+            cv2.circle(a, [p[0], p[1]], 2, [255], -1)
+    else:
+        print(path)
+    print(path)    
+    cv2.imshow('Image', a)
+    cv2.waitKey(0)
