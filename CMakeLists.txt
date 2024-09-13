@@ -70,6 +70,7 @@ install(PROGRAMS
   scripts/cloud_to_scan.py
   scripts/camera_driver.py
   scripts/pathfinding.py
+  scripts/pathfinding1.py
   scripts/path_controller.py
   scripts/path_mapping.py
   scripts/utils.py
