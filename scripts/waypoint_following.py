@@ -4,12 +4,16 @@ import rclpy
 from geometry_msgs.msg import PoseStamped
 from rclpy.node import Node
 from nav_msgs.msg import Odometry
+from utils import euler_from_quaternion
 
 
-def is_in_goal(current: Odometry, goal: PoseStamped, goal_rad: float):
+def is_in_goal(current: Odometry, goal: PoseStamped, goal_rad: float, obj):
     x1, y1 = current.pose.pose.position.x, current.pose.pose.position.y
     x2, y2 = goal.pose.position.x, goal.pose.position.y
-    if x2 - goal_rad < x1 < x2 + goal_rad:
+    th1 = euler_from_quaternion(current.pose.pose.orientation.x, current.pose.pose.orientation.y, current.pose.pose.orientation.z, current.pose.pose.orientation.w)[2]
+    th2 = goal.pose.orientation.z
+    obj.get_logger().info(f"{th1}, {th2}")
+    if abs(th1 - th2) <= 0.3 and x2 - goal_rad < x1 < x2 + goal_rad:
         if y2 - goal_rad < y1 < y2 + goal_rad:
             return True
     return False
@@ -74,11 +78,11 @@ class WaypointFollowing(Node):
                 self.goalData.header.frame_id = self.mapFrame
                 self.goalData.pose.position.x = self.waypoints[0][0]
                 self.goalData.pose.position.y = self.waypoints[0][1]
-                self.goalData.pose.position.z = self.waypoints[0][2]
+                self.goalData.pose.orientation.z = self.waypoints[0][2]
                 self.goalPub.publish(self.goalData)
                 self.pubFlg = True
             else:
-                if is_in_goal(self.odomData, self.goalData, self.goalRad):
+                if is_in_goal(self.odomData, self.goalData, self.goalRad, self):
                     self.get_logger().info("Goal reached!")
                     self.pubFlg = False
                     self.waypoints.pop(0)

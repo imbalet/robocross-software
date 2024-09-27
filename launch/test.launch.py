@@ -14,7 +14,7 @@ def generate_launch_description():
     param_file = os.path.join(get_package_share_directory("car_bot"), 'config', 'sim.yaml')
 
     action_simulation_launch = IncludeLaunchDescription(
-        launch_description_source=os.path.join(launch_path, 'gz.launch.py')
+        launch_description_source=os.path.join(launch_path, 'gz_test.launch.py')
     )
 
     action_rviz_launch = IncludeLaunchDescription(

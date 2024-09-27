@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 
-
+from sensor_msgs.msg import JointState
 from tf2_ros import TransformBroadcaster
 import numpy as np
 import ros2_numpy as rnp
 from pathfinding import Grid, AstarFinder
 from pathfinding1 import Astar
 import rclpy
+import cv2
+import time
 
 from rclpy.node import Node
 from utils import euler_from_quaternion, decart_to_polar
@@ -16,20 +18,31 @@ from geometry_msgs.msg import Twist, PoseStamped, Pose, TransformStamped
 import os
 import json
 
+from astar import Astar as asstar
+
 os.chdir(os.path.dirname(__file__))
 
 
 
+def coords_to_inds(coords, shape):
+    row = int(shape[0] // 2 + coords[1])
+    col = int(shape[1] // 2 + coords[0])
+    return row, col
 
 
-
+def inds_to_coords(inds, shape):
+    y = float( - shape[0] // 2 + inds[0])
+    x = float( - shape[1] // 2 + inds[1])
+    return x, y
 
 
 def is_in_goal(current: Odometry, goal: PoseStamped, goal_rad: float):
     x1, y1 = current.pose.pose.position.x, current.pose.pose.position.y
     x2, y2 = goal.pose.position.x, goal.pose.position.y
-    if x2 - goal_rad > x1 > x2 + goal_rad:
-        if y2 - goal_rad > y1 > y2 + goal_rad:
+    th1 = euler_from_quaternion(current.pose.pose.orientation.x, current.pose.pose.orientation.y, current.pose.pose.orientation.z, current.pose.pose.orientation.w)[2]
+    th2 = goal.pose.orientation.z
+    if abs(th1 - th2) <= 0.3 and x2 - goal_rad < x1 < x2 + goal_rad:
+        if y2 - goal_rad < y1 < y2 + goal_rad:
             return True
     return False
 
@@ -48,22 +61,25 @@ def remap_robot_coord(current: Odometry, map_array: np.ndarray, map_resolution: 
 def remap_goal_coord(goal: PoseStamped, map_array: np.ndarray, map_resolution: float):
     x = int(map_array.shape[0] - map_array.shape[0] / 2 + goal.pose.position.x / map_resolution)
     y = int(map_array.shape[1] - map_array.shape[1] / 2 + goal.pose.position.y / map_resolution)
-    uturn = True if goal.pose.position.z == 1. else False
-    return x, y, uturn
+    
+    return x, y, goal.pose.orientation.z
 
 class PathController(Node):
     FPS = 30
 
     def __init__(self, node_name: str):
+        self.prev_error = 0
+        self.prev_time = 0
+        
         super().__init__(node_name)
 
         self.declare_parameter('path_topic', '/path')
         self.declare_parameter('odom_topic', '/odom')
         self.declare_parameter('cmd_topic', '/cmd_vel')
         self.declare_parameter('frequency', 30)
-        self.declare_parameter('p_steering_ratio', 2.0)
+        self.declare_parameter('p_steering_ratio', 1.0)
         self.declare_parameter('p_speed_ratio', 1.)
-        self.declare_parameter('average_speed', 1.0)
+        self.declare_parameter('average_speed', 0.8)
         self.declare_parameter('map_topic', "/mapfull")
         self.declare_parameter('goal_topic', "/goal_pose")
         self.declare_parameter('goal_radius', 2.0)
@@ -95,6 +111,12 @@ class PathController(Node):
         
         
         self.tfBroadcaster = TransformBroadcaster(self)
+        
+        # self.joints = self.create_subscription(
+        #     JointState,
+        #     '/joint_states',
+        #     self.joints_callback,
+        #     10)
 
         self.pathSub = self.create_subscription(Path,
                                                 path_topic,
@@ -120,6 +142,8 @@ class PathController(Node):
         self.mapData = OccupancyGrid()
         self.goalData = PoseStamped()
         
+        self.ASTAR = asstar((17, 43), self.goalRad / self.mapRes, 0.3, self.pathDiscrete / self.mapRes)
+        
         self.astar = Astar(self.pathCollisionRad / self.mapRes, self.goalRad / self.mapRes, self.steeringVal, self.pathDiscrete / self.mapRes)
         
         self.grid = Grid(np.zeros((1, 1)), self.steeringVal, self.pathDiscrete / self.mapRes)
@@ -138,6 +162,11 @@ class PathController(Node):
     
     def goal_callback(self, msg):
         self.goalData = msg
+        
+    
+    # def joints_callback(self, msg):
+    #     for i in range(len(msg.name)):
+    #         self.get_logger().info(f'Joint: {msg.name[i]}, Position: {msg.position[i]}')
 
 
     def publish_tf(self):
@@ -145,8 +174,8 @@ class PathController(Node):
         msg.header.stamp = self.get_clock().now().to_msg()
         msg.header.frame_id = self.pathBaseFrame
         msg.child_frame_id = "path"
-        msg.transform.translation.x = -self.odomData.pose.pose.position.x
-        msg.transform.translation.y = -self.odomData.pose.pose.position.y
+        msg.transform.translation.x = 0.0 #-self.odomData.pose.pose.position.x
+        msg.transform.translation.y = 0.0 #-self.odomData.pose.pose.position.y
         msg.transform.translation.z = 0.0
         self.tfBroadcaster.sendTransform(msg)
 
@@ -158,30 +187,47 @@ class PathController(Node):
         if self.goalData != PoseStamped() and self.mapData != OccupancyGrid():
             if not is_in_goal(self.odomData, self.goalData, self.goalRad):
                 map_array = rnp.numpify(self.mapData)
+                
                 x1, y1, th1 = remap_robot_coord(self.odomData, map_array, self.mapRes)
                 self.grid.init_grid(map_array)
-                x2, y2, uturn = remap_goal_coord(self.goalData, map_array, self.mapRes)
-                path = None
-                if uturn and self.finder.uturnState != 3:
-                    path = self.finder.get_uturn(self.grid, (x1, y1, th1))
-                elif uturn and self.finder.uturnState == 3:
-                    self.grid.neighbours = self.grid.forward_neighbours
-                    path = self.finder.get_path(self.grid, (x1, y1, th1), (x2, y2))
-                else:
-                    self.finder.uturnState = 0
-                    path = self.finder.get_path(self.grid, (x1, y1, th1), (x2, y2))
+                x2, y2, th2 = remap_goal_coord(self.goalData, map_array, self.mapRes)
+                # path = None
+                # if uturn and self.finder.uturnState != 3:
+                #     path = self.finder.get_uturn(self.grid, (x1, y1, th1))
+                # elif uturn and self.finder.uturnState == 3:
+                #     self.grid.neighbours = self.grid.forward_neighbours
+                #     path = self.finder.get_path(self.grid, (x1, y1, th1), (x2, y2))
+                # else:
+                #     self.finder.ut    urnState = 0
+                #     path = self.finder.get_path(self.grid, (x1, y1, th1), (x2, y2))
                 
-                # path = self.astar.astar(map_array, (y1, x1, th1), (y2, x2))
+                # path = self.finder.get_path(self.grid, (x1, y1, th1), (x2, y2))
+                
+                inds_r = coords_to_inds((self.odomData.pose.pose.position.x / self.mapRes, self.odomData.pose.pose.position.y / self.mapRes), map_array.shape)
+                inds_g = coords_to_inds((self.goalData.pose.position.x / self.mapRes, self.goalData.pose.position.y / self.mapRes), map_array.shape)
+                
+                
+                # path = self.astar.astar(map_array, (*inds_r, -th1), inds_g)
 
+                path = self.ASTAR.astar(map_array, (*inds_r, -th1), (*inds_g, -th2), 50)
+                
+                # data = list(map(list(map_array)))
+                # json.dump(data, open("mm.json"))
+                
                 msg = Path()
                 msg.header.stamp = self.get_clock().now().to_msg()
                 msg.header.frame_id = "path"
                 if isinstance(path, list):
                     for pose in path[1:]:
                         p = PoseStamped()
-                        p.pose.position.x = float(pose[0]) * self.mapRes - map_array.shape[0] * self.mapRes / 2
-                        p.pose.position.y = float(pose[1]) * self.mapRes - map_array.shape[1] * self.mapRes / 2
-                        p.pose.orientation.z = float(pose[2])
+                        # p.pose.position.x = float(pose[0]) * self.mapRes - map_array.shape[0] * self.mapRes / 2
+                        # p.pose.position.y = float(pose[1]) * self.mapRes - map_array.shape[1] * self.mapRes / 2
+                        coords = inds_to_coords(pose, map_array.shape)
+                        p.pose.position.y = coords[1] * self.mapRes
+                        p.pose.position.x = coords[0] * self.mapRes
+                        p.pose.position.z = float(pose[3])
+                        # p.pose.position.z = float(1)
+                        p.pose.orientation.z = -float(pose[2])
                         msg.poses.append(p)
                 self.pathPub.publish(msg)
 
@@ -202,30 +248,43 @@ class PathController(Node):
         msg.angular.z = steer
         self.cmdPub.publish(msg)
 
+    kd = 1
+
     def p_control_steer(self, pose: Pose, path: list[PoseStamped]):
+        cur_time = time.time()
+        cur_per = cur_time - self.prev_time
+        self.prev_time = cur_time
+        
         angle = euler_from_quaternion(pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w)[2]
-        goal_pose = path[0].pose
+        goal_pose = path[1].pose
         goal_angle = goal_pose.orientation.z
         delta_angle = goal_angle - angle
+        
+        d = (delta_angle - self.prev_error) * PathController.kd / cur_per
+        
+        self.prev_error = delta_angle
+        
         p_ = self.pSteeringRatio * delta_angle
-        return p_
+        print(d)
+        return (p_ + d) if path[1].pose.position.z > 0 else -(p_ + d)
 
     def p_control_speed(self, pose: Pose, path: list[PoseStamped]):
-        robot_x, robot_y = pose.position.x, pose.position.y
-        try:
-            goal_x, goal_y = path[1].pose.position.x, path[1].pose.position.y
-        except:
-            return 0.
+        return self.averageSpeed if path[1].pose.position.z > 0 else -self.averageSpeed
+        # robot_x, robot_y = pose.position.x, pose.position.y
+        # try:
+        #     goal_x, goal_y = path[1].pose.position.x, path[1].pose.position.y
+        # except:
+        #     return 0.
 
-        transformed_goal_x, transformed_goal_y = goal_x - robot_x, goal_y - robot_y
-        rho, th = decart_to_polar(transformed_goal_x, transformed_goal_y)
+        # transformed_goal_x, transformed_goal_y = goal_x - robot_x, goal_y - robot_y
+        # rho, th = decart_to_polar(transformed_goal_x, transformed_goal_y)
 
-        angle = euler_from_quaternion(pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w)[2]
-        direction = abs(angle - th)
-        if direction > 2.5:
-            return -self.averageSpeed
-        else:
-            return self.averageSpeed
+        # angle = euler_from_quaternion(pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w)[2]
+        # direction = abs(angle - th)
+        # if direction > 2.5:
+        #     return -self.averageSpeed
+        # else:
+        #     return self.averageSpeed
 
 
 def main():

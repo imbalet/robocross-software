@@ -26,7 +26,8 @@
 #include "Map.hpp"
 
 std::vector<double> euler_from_quaternion(double x, double y, double z,
-                                          double w) {
+                                          double w)
+{
   double const PI = 3.1415926535;
   std::vector<double> euler(3);
   double sinr_cosp = 2 * (w * x + y * z);
@@ -47,9 +48,11 @@ std::vector<double> euler_from_quaternion(double x, double y, double z,
   return euler;
 }
 
-class Mapping : public rclcpp::Node {
+class Mapping : public rclcpp::Node
+{
 public:
-  Mapping() : Node("mapping") {
+  Mapping() : Node("mapping")
+  {
 
     this->declare_parameter("frequency", 100);
     this->declare_parameter("front_scan_topic", "/front_camera/scan");
@@ -107,24 +110,26 @@ public:
 
     frontScanSub = this->create_subscription<sensor_msgs::msg::LaserScan>(
         front_scan_topic, 10,
-        [this](const sensor_msgs::msg::LaserScan::SharedPtr msg) {
+        [this](const sensor_msgs::msg::LaserScan::SharedPtr msg)
+        {
           this->front_scan_callback(msg);
         });
 
     rearScanSub = this->create_subscription<sensor_msgs::msg::LaserScan>(
         rear_scan_topic, 10,
-        [this](const sensor_msgs::msg::LaserScan::SharedPtr msg) {
+        [this](const sensor_msgs::msg::LaserScan::SharedPtr msg)
+        {
           this->rear_scan_callback(msg);
         });
 
     odomSub = this->create_subscription<nav_msgs::msg::Odometry>(
-        odom_topic, 10, [this](const nav_msgs::msg::Odometry::SharedPtr msg) {
-          this->odom_callback(msg);
-        });
+        odom_topic, 10, [this](const nav_msgs::msg::Odometry::SharedPtr msg)
+        { this->odom_callback(msg); });
 
     goalSub = this->create_subscription<geometry_msgs::msg::PoseStamped>(
         goal_topic, 10,
-        [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
+        [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg)
+        {
           this->goal_callback(msg);
         });
 
@@ -145,7 +150,7 @@ public:
 private:
   const signed char FREE_CELL = 0;
   // const unsigned char UNKNOWN_CELL = 255;
-  const signed char OBSTACLE_CELL = 100;
+  const signed char OBSTACLE_CELL = 127;
 
   std::string robotBaseFrame;
   std::string mapFrame;
@@ -185,12 +190,14 @@ private:
   std::vector<std::vector<double>>
   robot_to_global(std::vector<double> robot_pos, double robot_orientation,
                   std::vector<double> lidar_pos, std::vector<float> distanties,
-                  std::vector<double> angles) {
+                  std::vector<double> angles)
+  {
 
     std::vector<double> lidar_offset_x(angles.size());
     std::vector<double> lidar_offset_y(angles.size());
 
-    for (size_t i = 0; i < angles.size(); ++i) {
+    for (size_t i = 0; i < angles.size(); ++i)
+    {
       // первод из полярных в декартовы и применение смещения относительно
       // робота
       lidar_offset_x[i] = distanties[i] * cos(angles[i]) + lidar_pos[0];
@@ -205,7 +212,8 @@ private:
 
     // применяет матрицу поворота и смещение
     // сразу пишет в матрицу вида [[x0, y0],[x1, y1]]
-    for (size_t i = 0; i < angles.size(); ++i) {
+    for (size_t i = 0; i < angles.size(); ++i)
+    {
       global_coords[i][0] = lidar_offset_x[i] * cos_theta -
                             lidar_offset_y[i] * sin_theta + robot_pos[0];
 
@@ -215,7 +223,8 @@ private:
     return global_coords;
   }
 
-  void timer_callback() {
+  void timer_callback()
+  {
     publish_tf();
     scan_to_local_map();
     publish_map();
@@ -240,15 +249,18 @@ private:
     //         self.get_logger().warn(path)
   }
 
-  void scan_to_local_map() {
+  void scan_to_local_map()
+  {
     auto c = map->get_inds_by_coords(robotPos[0], robotPos[1]);
 
     // map->to_local_map(c.second, c.first);s
 
-    if (front_scan_data.ranges.size() > 0) {
+    if (front_scan_data.ranges.size() > 0)
+    {
       // int map_center = static_cast<int>(map->size_m() / (2.0 * mapRes));
       std::vector<double> angles(front_scan_data.ranges.size());
-      for (size_t i = 0; i < angles.size(); ++i) {
+      for (size_t i = 0; i < angles.size(); ++i)
+      {
         angles[i] =
             front_scan_data.angle_min + i * front_scan_data.angle_increment;
       }
@@ -261,8 +273,10 @@ private:
 
       std::vector<std::pair<int, int>> points;
 
-      for (size_t i = 0; i < coords.size(); ++i) {
-        if (front_scan_data.ranges[i] == 0) {
+      for (size_t i = 0; i < coords.size(); ++i)
+      {
+        if (front_scan_data.ranges[i] == 0)
+        {
           continue;
         }
         auto &coord = coords[i];
@@ -272,23 +286,20 @@ private:
         this->map->drawline(base.second, base.first, xy.second, xy.first,
                             FREE_CELL);
         if ((xy.first > 0 && xy.first < map->height) &&
-            (xy.second > 0 && xy.second < map->width)) {
+            (xy.second > 0 && xy.second < map->width))
+        {
           points.push_back(xy);
         }
       }
 
-      for (auto point : points) {
+      for (auto point : points)
+      {
         // this->map->get_map_by_ind(point.first, point.second) = OBSTACLE_CELL;
-        map->draw_circle(point, robotColRadius / mapRes, 70, {});
+        map->draw_circle(point, robotColRadius / mapRes, 3, {OBSTACLE_CELL});
       }
 
-      for (auto point : points) {
-        this->map->get_map_by_ind(point.first, point.second) = OBSTACLE_CELL;
-        // map->draw_circle(point, robotColRadius / mapRes, 70,
-        // {OBSTACLE_CELL});
-      }
-
-      for (auto point : points) {
+      for (auto point : points)
+      {
         this->map->get_map_by_ind(point.first, point.second) = OBSTACLE_CELL;
         // map->draw_circle(point, robotColRadius / mapRes, 70,
         // {OBSTACLE_CELL});
@@ -301,13 +312,16 @@ private:
     map->get_map_by_ind(0, 1) = OBSTACLE_CELL;
   }
 
-  void front_scan_callback(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
+  void front_scan_callback(const sensor_msgs::msg::LaserScan::SharedPtr msg)
+  {
     front_scan_data = *msg;
   }
-  void rear_scan_callback(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
+  void rear_scan_callback(const sensor_msgs::msg::LaserScan::SharedPtr msg)
+  {
     rear_scan_data = *msg;
   }
-  void odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg) {
+  void odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
+  {
     odom_data = *msg;
     robotPos[0] = msg->pose.pose.position.x;
     robotPos[1] = msg->pose.pose.position.y;
@@ -319,11 +333,13 @@ private:
     // map->to_local_map(c.first, c.second);
   }
 
-  void goal_callback(const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
+  void goal_callback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
+  {
     goal_data = *msg;
   }
 
-  void publish_tf() {
+  void publish_tf()
+  {
     // auto map_center = map->get_center_coord();
     auto msg = geometry_msgs::msg::TransformStamped();
     msg.header.stamp = this->get_clock()->now();
@@ -336,25 +352,26 @@ private:
     tf_broadcaster->sendTransform(msg);
   }
 
-  bool is_in_goal(geometry_msgs::msg::PoseStamped goal) {
+  bool is_in_goal(geometry_msgs::msg::PoseStamped goal)
+  {
     double x = goal.pose.position.x, y = goal.pose.position.y;
     return ((x - goalRad) > robotPos[0] && (x + goalRad) < robotPos[0] &&
             (y - goalRad) > robotPos[1] && (y + goalRad) < robotPos[1]);
   }
 
-  void publish_map() {
-
+  void publish_map()
+  {
     // auto origin = map->get_origin();
-    auto map_p = nav_msgs::msg::OccupancyGrid();
-    map_p.data = this->map->local_map;
-    map_p.header.stamp = this->get_clock()->now();
-    map_p.header.frame_id = mapFrame;
-    map_p.info.width = localMapSize / mapRes;
-    map_p.info.height = localMapSize / mapRes;
-    map_p.info.resolution = mapRes;
-    map_p.info.origin.position.x = -localMapSize / 2.0;
-    map_p.info.origin.position.y = -localMapSize / 2.0;
-    mapPub->publish(map_p);
+    // auto map_p = nav_msgs::msg::OccupancyGrid();
+    // map_p.data = this->map->local_map;
+    // map_p.header.stamp = this->get_clock()->now();
+    // map_p.header.frame_id = mapFrame;
+    // map_p.info.width = localMapSize / mapRes;
+    // map_p.info.height = localMapSize / mapRes;
+    // map_p.info.resolution = mapRes;
+    // map_p.info.origin.position.x = -localMapSize / 2.0;
+    // map_p.info.origin.position.y = -localMapSize / 2.0;
+    // mapPub->publish(map_p);
 
     auto map_p_gl = nav_msgs::msg::OccupancyGrid();
     map_p_gl.data = this->map->map;
@@ -363,13 +380,14 @@ private:
     map_p_gl.info.width = map->width;
     map_p_gl.info.height = map->height;
     map_p_gl.info.resolution = mapRes;
-    map_p_gl.info.origin.position.x = -mapSize;
-    map_p_gl.info.origin.position.y = -mapSize;
+    map_p_gl.info.origin.position.x = -this->map->width * mapRes / 2;
+    map_p_gl.info.origin.position.y = -this->map->height * mapRes / 2;
     fullMapPub->publish(map_p_gl);
   }
 };
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
   rclcpp::init(argc, argv);
   rclcpp::spin(std::make_shared<Mapping>());
   rclcpp::shutdown();

@@ -76,6 +76,9 @@ install(PROGRAMS
   scripts/utils.py
   scripts/pc2scan.py
   scripts/waypoint_following.py
+  scripts/reeds_shepp.py
+  scripts/curves.py
+  scripts/astar.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
