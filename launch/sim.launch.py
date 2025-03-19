@@ -7,45 +7,47 @@ from ament_index_python.packages import get_package_share_directory
 
 
 def generate_launch_description():
-    package_path = get_package_share_directory('car_bot')
-    launch_path = os.path.join(package_path, 'launch')
-    param_file = os.path.join(get_package_share_directory("car_bot"), 'config', 'sim.yaml')
+    package_path = get_package_share_directory("car_bot")
+    launch_path = os.path.join(package_path, "launch")
+    param_file = os.path.join(
+        get_package_share_directory("car_bot"), "config", "sim.yaml"
+    )
 
     action_simulation_launch = IncludeLaunchDescription(
-        launch_description_source=os.path.join(launch_path, 'gz.launch.py')
+        launch_description_source=os.path.join(launch_path, "gz.launch.py")
     )
 
     action_rviz_launch = IncludeLaunchDescription(
-        launch_description_source=os.path.join(launch_path, 'state_publisher.launch.py')
+        launch_description_source=os.path.join(launch_path, "state_publisher.launch.py")
     )
 
     action_front_cloud_to_scan = Node(
-        package='car_bot',
-        executable='cloud_to_scan.py',
-        name='front_cloud_to_scan',
-        parameters=[param_file]
+        package="car_bot",
+        executable="point_cloud_to_scan",
+        name="point_cloud_to_scan",
+        parameters=[param_file],
     )
 
     action_path_mapping = Node(
-        package='car_bot',
-        executable='path_mapping.py',
-        name='path_mapping',
+        package="car_bot",
+        executable="path_mapping.py",
+        name="path_mapping",
         output="screen",
-        parameters=[param_file]
+        parameters=[param_file],
     )
 
     action_path_controller = Node(
-        package='car_bot',
-        executable='path_controller.py',
-        name='path_controller',
-        parameters=[param_file]
+        package="car_bot",
+        executable="path_controller.py",
+        name="path_controller",
+        parameters=[param_file],
     )
 
     action_waypoint_following = Node(
-        package='car_bot',
-        executable='waypoint_following.py',
-        name='waypoint_following',
-        parameters=[param_file]
+        package="car_bot",
+        executable="waypoint_following.py",
+        name="waypoint_following",
+        parameters=[param_file],
     )
 
     ld = LaunchDescription()

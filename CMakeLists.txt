@@ -2,12 +2,13 @@ cmake_minimum_required(VERSION 3.8)
 project(car_bot)
 
 if(NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 14)
+  set(CMAKE_CXX_STANDARD 17)
 endif()
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_compile_options(-Wall -Wextra -Wpedantic)
+  add_compile_options(-Wall -Wextra -Wpedantic -g -Og)
 endif()
 
 # find dependencies
@@ -19,36 +20,27 @@ find_package(rclpy REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
-
-include_directories(include)
+find_package(geometry_msgs REQUIRED)
+find_package(pcl_conversions REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
 
 
-# add_executable(imu src/imu.cpp)
-# ament_target_dependencies(imu rclcpp sensor_msgs std_msgs)
+include_directories(include /opt/ros/humble/include/)
 
-# install(TARGETS
-#  imu
-#  DESTINATION lib/${PROJECT_NAME}
-# )
+add_executable(point_cloud_to_scan src/point_cloud_to_scan.cpp)
+ament_target_dependencies(point_cloud_to_scan rclcpp std_msgs sensor_msgs)
 
-# Install Python modules
+
+install(TARGETS
+   point_cloud_to_scan
+   DESTINATION lib/${PROJECT_NAME}
+ )
+
 ament_python_install_package(${PROJECT_NAME})
-# Install Python executables
-install(PROGRAMS
-  scripts/cloud_to_scan.py
-  scripts/camera_driver.py
-  scripts/pathfinding.py
-  scripts/path_controller.py
-  scripts/path_mapping.py
-  scripts/utils.py
-  scripts/waypoint_following.py
-  DESTINATION lib/${PROJECT_NAME}
-)
 
-# Install launch files.
+file(GLOB SCRIPTS_FILES scripts/*.py)
+install(PROGRAMS ${SCRIPTS_FILES} DESTINATION lib/${PROJECT_NAME})
+
 install(DIRECTORY
   launch
   DESTINATION share/${PROJECT_NAME}/
