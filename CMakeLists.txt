@@ -27,6 +27,13 @@ include_directories(include)
 
 
 # add_executable(imu src/imu.cpp)
+add_executable(pc2scan src/pc2scan.cpp)
+ament_target_dependencies(pc2scan rclcpp std_msgs sensor_msgs)
+
+install(TARGETS
+   pc2scan
+   DESTINATION lib/${PROJECT_NAME}
+ )
 # ament_target_dependencies(imu rclcpp sensor_msgs std_msgs)
 
 # install(TARGETS
@@ -45,6 +52,7 @@ install(PROGRAMS
   scripts/path_mapping.py
   scripts/utils.py
   scripts/waypoint_following.py
+  scripts/movement_controller.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

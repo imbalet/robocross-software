@@ -97,6 +97,7 @@ class CloudToScan(Node):
         self.pcData = msg
 
     def pointcloud_to_scan(self):
+        t1 = time.time()
         data = rnp.numpify(self.pcData)
         data = np.array(data['xyz'], dtype=np.float32)
         condition = data[:, 2] < self.zMax
@@ -119,6 +120,7 @@ class CloudToScan(Node):
                     self.scanData[i, 1] = rad
             except IndexError:
                 pass
+        print(1 / time.time())
 
     def timer_callback(self):
         if self.pcData != PointCloud2():

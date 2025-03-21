@@ -21,7 +21,7 @@ def generate_launch_description():
 
     action_front_cloud_to_scan = Node(
         package='car_bot',
-        executable='cloud_to_scan.py',
+        executable='pc2scan',
         name='front_cloud_to_scan',
         parameters=[param_file]
     )
