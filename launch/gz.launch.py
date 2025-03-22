@@ -13,39 +13,37 @@ def generate_launch_description():
     package_path = get_package_share_directory("car_bot")
     pkg_ros_gz_sim = get_package_share_directory("ros_gz_sim")
 
-    action_gz_sim = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(pkg_ros_gz_sim, "launch", "gz_sim.launch.py")
-        ),
-        launch_arguments={
-            "gz_args": [
-                PathJoinSubstitution(
-                    [
-                        FindPackageShare("car_bot"),
-                        "model",
-                        "robocross_trial.sdf.xml",
+    return LaunchDescription(
+        [
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    os.path.join(pkg_ros_gz_sim, "launch", "gz_sim.launch.py")
+                ),
+                launch_arguments={
+                    "gz_args": [
+                        PathJoinSubstitution(
+                            [
+                                FindPackageShare("car_bot"),
+                                "model",
+                                "robocross_trial.sdf.xml",
+                            ]
+                        ),
+                        " -r",
                     ]
-                ),
-                " -r",
-            ]
-        }.items(),
-    )
-
-    action_bridge = Node(
-        package="ros_gz_bridge",
-        executable="parameter_bridge",
-        parameters=[
-            {
-                "config_file": os.path.join(
-                    package_path, "config", "gz_remapings.yaml"
-                ),
-                "qos_overrides./tf_static.publisher.durability": "transient_local",
-            }
+                }.items(),
+            ),
+            Node(
+                package="ros_gz_bridge",
+                executable="parameter_bridge",
+                parameters=[
+                    {
+                        "config_file": os.path.join(
+                            package_path, "config", "gz_remapings.yaml"
+                        ),
+                        "qos_overrides./tf_static.publisher.durability": "transient_local",
+                    }
+                ],
+                output="screen",
+            ),
         ],
-        output="screen",
     )
-
-    ld = LaunchDescription()
-    ld.add_action(action_gz_sim)
-    ld.add_action(action_bridge)
-    return ld
