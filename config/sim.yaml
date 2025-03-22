@@ -1,6 +1,10 @@
+/**:
+  ros__parameters:
+    use_sim_time: true
+
 front_cloud_to_scan:
   ros__parameters:
-    use_sim_time: False
+    use_sim_time: True
     frame_id: front_camera_link
     pointcloud_topic: /front_camera/points
     scan_topic: /front_camera/scan
@@ -59,3 +63,60 @@ waypoint_following:
     waypoints: [20.6453, -9.80267, 0., 24.3003, -31.9225, 0., 13.7962, -46.5684, 0., 20.6453, -9.80267, 1.]
     map_frame: map
     start_following: False # Начинать следование только после запуска и инициализации всех нод
+
+/costmap/costmap:
+  ros__parameters:
+    debug_info: true
+    use_sim_time: True
+    global_frame: odom
+    robot_base_frame: base_footprint
+    update_frequency: 50.0
+    publish_frequency: 50.0
+    always_send_full_costmap: True
+    
+    width: 100
+    height: 100
+    origin_x: -50.0
+    origin_y: -50.0
+    resolution: 0.1
+    
+    rolling_window: true
+    width_in_meters: 100
+    height_in_meters: 100
+    
+    track_unknown_space: false
+    
+    transform_tolerance: 0.5
+    obstacle_range: 25.0
+    raytrace_range: 30.0
+    
+    plugins: ["obstacle_layer", "inflation_layer"]
+    
+    obstacle_layer:
+      plugin: "nav2_costmap_2d::ObstacleLayer"
+      enabled: True
+      observation_sources: laser_scan
+      laser_scan:
+        topic: /front_camera/scan
+        sensor_frame: "front_camera_link"
+        reliability: reliable
+        durability: volatile
+        history: keep_last
+        max_obstacle_height: 20.0
+        min_obstacle_height: -10.0
+        obstacle_max_range: 25.0
+        obstacle_min_range: 0.0
+        raytrace_max_range: 30.0
+        raytrace_min_range: 0.0
+        clearing: True
+        marking: True
+        data_type: "LaserScan"
+        inf_is_valid: false
+
+    inflation_layer:
+      plugin: "nav2_costmap_2d::InflationLayer"
+      enabled: True
+      inflation_radius: 1.5
+      cost_scaling_factor: 1.0
+      inflate_unknown: true
+      inflate_around_unknown: true

@@ -1,60 +1,59 @@
-import os
-
-from launch_ros.actions import Node
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription
+from launch.actions import (
+    IncludeLaunchDescription,
+    RegisterEventHandler,
+    TimerAction,
+)
+from launch_ros.actions import Node, LifecycleNode
 from ament_index_python.packages import get_package_share_directory
+from launch.event_handlers import OnProcessStart
+import os
 
 
 def generate_launch_description():
-    package_path = get_package_share_directory("car_bot")
-    launch_path = os.path.join(package_path, "launch")
-    param_file = os.path.join(
-        get_package_share_directory("car_bot"), "config", "sim.yaml"
-    )
+    pkg_dir = get_package_share_directory("car_bot")
 
-    action_simulation_launch = IncludeLaunchDescription(
-        launch_description_source=os.path.join(launch_path, "gz.launch.py")
-    )
-
-    action_rviz_launch = IncludeLaunchDescription(
-        launch_description_source=os.path.join(launch_path, "state_publisher.launch.py")
-    )
-
-    action_front_cloud_to_scan = Node(
-        package="car_bot",
-        executable="point_cloud_to_scan",
-        name="point_cloud_to_scan",
-        parameters=[param_file],
-    )
-
-    action_path_mapping = Node(
-        package="car_bot",
-        executable="path_mapping.py",
-        name="path_mapping",
+    costmap_node = LifecycleNode(
+        package="nav2_costmap_2d",
+        executable="nav2_costmap_2d",
+        name="costmap",
+        namespace="costmap",
         output="screen",
-        parameters=[param_file],
+        parameters=[os.path.join(pkg_dir, "config", "sim.yaml")],
+    )
+    lifecycle_manager_node = Node(
+        package="nav2_lifecycle_manager",
+        executable="lifecycle_manager",
+        name="lifecycle_manager",
+        output="screen",
+        parameters=[
+            {
+                "autostart": True,
+                "node_names": ["/costmap/costmap"],
+                "bond_timeout": 0.0,
+            }
+        ],
     )
 
-    action_path_controller = Node(
-        package="car_bot",
-        executable="path_controller.py",
-        name="path_controller",
-        parameters=[param_file],
+    return LaunchDescription(
+        [
+            IncludeLaunchDescription(os.path.join(pkg_dir, "launch", "gz.launch.py")),
+            IncludeLaunchDescription(
+                os.path.join(pkg_dir, "launch", "state_publisher.launch.py")
+            ),
+            Node(
+                package="car_bot",
+                executable="point_cloud_to_scan",
+                name="point_cloud_to_scan",
+                parameters=[os.path.join(pkg_dir, "config", "sim.yaml")],
+            ),
+            Node(
+                package="car_bot",
+                executable="odometry.py",
+                name="odometry",
+                parameters=[{"use_sim_time": True}],
+            ),
+            TimerAction(period=7.0, actions=[costmap_node]),
+            TimerAction(period=13.0, actions=[lifecycle_manager_node]),
+        ]
     )
-
-    action_waypoint_following = Node(
-        package="car_bot",
-        executable="waypoint_following.py",
-        name="waypoint_following",
-        parameters=[param_file],
-    )
-
-    ld = LaunchDescription()
-    ld.add_action(action_simulation_launch)
-    ld.add_action(action_rviz_launch)
-    ld.add_action(action_front_cloud_to_scan)
-    ld.add_action(action_path_mapping)
-    ld.add_action(action_path_controller)
-    ld.add_action(action_waypoint_following)
-    return ld
