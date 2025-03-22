@@ -10,9 +10,24 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
   <buildtool_depend>ament_cmake_python</buildtool_depend>
 
+  <!-- Core ROS dependencies -->
   <depend>rclcpp</depend>
   <depend>rclpy</depend>
   <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>tf2_ros</depend>
+  <depend>cv_bridge</depend>
+
+  <!-- Navigation dependencies -->
+  <depend>nav2_msgs</depend>
+  <depend>nav2_common</depend>
+  <depend>nav2_costmap_2d</depend>
+
+  <!-- Additional ROS utilities -->
+  <depend>laser_geometry</depend>
+  <depend>lifecycle_msgs</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
