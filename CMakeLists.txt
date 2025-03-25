@@ -47,13 +47,18 @@ ament_python_install_package(${PROJECT_NAME})
 install(PROGRAMS
   scripts/cloud_to_scan.py
   scripts/camera_driver.py
-  scripts/pathfinding.py
   scripts/path_controller.py
   scripts/path_mapping.py
-  scripts/utils.py
   scripts/waypoint_following.py
   scripts/movement_controller.py
   DESTINATION lib/${PROJECT_NAME}
+)
+
+install(PROGRAMS
+  scripts/util/astar.py
+  scripts/util/hybrid_astar.py
+  scripts/util/utils.py
+  DESTINATION lib/${PROJECT_NAME}/util
 )
 
 # Install launch files.

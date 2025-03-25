@@ -3,7 +3,7 @@
 import rclpy
 
 from rclpy.node import Node
-from utils import euler_from_quaternion, decart_to_polar
+from util.utils import euler_from_quaternion, decart_to_polar
 from nav_msgs.msg import Path, Odometry
 from geometry_msgs.msg import Twist, PoseStamped, Pose
 

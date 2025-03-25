@@ -19,6 +19,10 @@ def generate_launch_description():
         launch_description_source=os.path.join(launch_path, 'state_publisher.launch.py')
     )
 
+    action_robot_localization_ekf_launch = IncludeLaunchDescription(
+        launch_description_source=os.path.join(launch_path, 'robot_localization_ekf.launch.py')
+    )
+
     action_front_cloud_to_scan = Node(
         package='car_bot',
         executable='pc2scan',
@@ -53,6 +57,7 @@ def generate_launch_description():
     ld.add_action(action_rviz_launch)
     ld.add_action(action_front_cloud_to_scan)
     ld.add_action(action_path_mapping)
+    ld.add_action(action_robot_localization_ekf_launch)
     ld.add_action(action_path_controller)
     ld.add_action(action_waypoint_following)
     return ld

@@ -14,7 +14,7 @@ class CloudToScan : public rclcpp::Node {
 public:
   CloudToScan() : Node("cloud_to_scan") {
     this->declare_parameter("scan_topic", "/front_camera/scan");
-    this->declare_parameter("cloud_topic", "/front_camera/points");
+    this->declare_parameter("pointcloud_topic", "/front_camera/points");
     this->declare_parameter("frequency", 30);
     this->declare_parameter("x_max", 20.0);
     this->declare_parameter("x_min", 0.7);
@@ -39,7 +39,7 @@ public:
     frameId = this->get_parameter("frame_id").as_string();
     frequency = this->get_parameter("frequency").as_int();
     scan_topic = this->get_parameter("scan_topic").as_string();
-    cloud_topic = this->get_parameter("cloud_topic").as_string();
+    cloud_topic = this->get_parameter("pointcloud_topic").as_string();
 
     angleIncrement = (abs(angleMin) + abs(angleMax)) / raysNum;
 

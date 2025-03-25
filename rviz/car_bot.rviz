@@ -5,7 +5,6 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
-        - /Status1
       Splitter Ratio: 0.5
     Tree Height: 746
   - Class: rviz_common/Selection
@@ -206,13 +205,13 @@ Visualization Manager:
         Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /map
+        Value: /local_map
       Update Topic:
         Depth: 5
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /map_updates
+        Value: /local_map_updates
       Use Timestamp: false
       Value: true
     - Alpha: 1
@@ -266,7 +265,7 @@ Visualization Manager:
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
-    Fixed Frame: base_footprint
+    Fixed Frame: map
     Frame Rate: 30
   Name: root
   Tools:
@@ -309,25 +308,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 14.750008583068848
+      Distance: 21.901159286499023
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 5.862145900726318
-        Y: -0.525517463684082
-        Z: -0.550145149230957
+        X: 4.687704563140869
+        Y: -0.569441020488739
+        Z: -1.5446279048919678
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.0647965669631958
+      Pitch: 0.6647970676422119
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.0535922050476074
+      Yaw: 3.248612642288208
     Saved: ~
 Window Geometry:
   Displays:
