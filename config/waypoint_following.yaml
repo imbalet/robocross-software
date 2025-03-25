@@ -1,9 +1,16 @@
-waypoint_follower:
+waypoint_following:
   ros__parameters:
     use_sim_time: true
     frequency: 30
+
+    # Topic
     goal_topic: /goal_pose
+
+    # Frame to publish waypoint pose
     map_frame: map
-    goal_radius: 3.0 # the radius around the point at which the point will be considered reached
-    waypoints: [0., 0., 3.14, -12., 0., 0., -12., 4, 0., 0., -4, 0., 0., 0., 3.14] # waipoints which represents points of the route, x, y, theta
-    start_following: False # if true, the points start going to the topic. Start following only after starting and initializing all nodes
+
+    # Waypoints which represents points of the route, x, y, theta
+    waypoints: [20.8, -9.5, 1., 17.7, -44.8, 1.8]
+
+    # Flag, if true, the points start going to the topic. Start following only after starting and initializing all nodes
+    start_following: false

@@ -17,14 +17,14 @@ from nav_msgs.msg import OccupancyGrid, Odometry, Path
 def is_in_goal(current: Odometry, goal: PoseStamped, goal_rad: float):
     x1, y1 = current.pose.pose.position.x, current.pose.pose.position.y
     x2, y2 = goal.pose.position.x, goal.pose.position.y
-    z1 = euler_from_quaternion(current.pose.pose.orientation.x,
-                               current.pose.pose.orientation.y,
-                               current.pose.pose.orientation.z,
-                               current.pose.pose.orientation.w)[2]
-    z2 = euler_from_quaternion(goal.pose.orientation.x,
-                               goal.pose.orientation.y,
-                               goal.pose.orientation.z,
-                               goal.pose.orientation.w)[2]
+    # z1 = euler_from_quaternion(current.pose.pose.orientation.x,
+    #                            current.pose.pose.orientation.y,
+    #                            current.pose.pose.orientation.z,
+    #                            current.pose.pose.orientation.w)[2]
+    # z2 = euler_from_quaternion(goal.pose.orientation.x,
+    #                            goal.pose.orientation.y,
+    #                            goal.pose.orientation.z,
+    #                            goal.pose.orientation.w)[2]
     if x2 - goal_rad < x1 < x2 + goal_rad:
         if y2 - goal_rad < y1 < y2 + goal_rad:
             # dz = abs(z2 - z1)
@@ -268,11 +268,11 @@ class PathMapping(Node):
         remapped_robot_coord = remap_robot_coord(self.odomData, self.globalMapArray, self.mapRes)
 
         # Set scan data on map
-        # self.set_scan(self.frontScanData, self.frontScanPos)
+        self.set_scan(self.frontScanData, self.frontScanPos)
         # self.set_scan(self.rearScanData, self.rearScanPos)
         # self.set_scan(self.leftScanData, self.leftScanPos)
         # self.set_scan(self.rightScanData, self.rightScanPos)
-        # self.set_obstacles(remapped_robot_coord[0], remapped_robot_coord[1])
+        self.set_obstacles(remapped_robot_coord[0], remapped_robot_coord[1])
 
         # Send map frame static transform
         self.set_map_frame()

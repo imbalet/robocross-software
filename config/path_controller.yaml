@@ -1,9 +1,20 @@
 path_controller:
   ros__parameters:
+    use_sim_time: true
     frequency: 30
+
+    # The node uses a service 'GetParameters' from which it gets the ROS2 <path_state> parameter.
+    # If the parameter value is True, then the controller publishes Twist in the <cmd_topic> topic.
+    path_state_service_node: path_mapping
+
+    # Topics
     path_topic: /path
     odom_topic: /odom
     cmd_topic: /cmd_vel
-    p_steering_ratio: 2.5
-    p_speed_ratio: 1.0
+
+    # Average linear robot speed
     average_speed: 1.0
+    # PID parameters
+    kp: 0.8
+    ki: 0.001
+    kd: 0.1

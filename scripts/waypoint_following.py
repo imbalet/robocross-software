@@ -9,14 +9,14 @@ from rcl_interfaces.srv import GetParameters
 from util.utils import quaternion_from_euler
 
 
-class WaypointFollower(Node):
+class WaypointFollowing(Node):
 
     def __init__(self, node_name: str):
         super().__init__(node_name)
 
         self.declare_parameter('frequency', 30)
         self.declare_parameter('goal_topic', '/goal_pose')
-        self.declare_parameter('waypoints', [0., 0., 0., -13., 0., 0., -13., 2.5, 0., 0., 2.5, 0., 0., 0., 0.])
+        self.declare_parameter('waypoints', [0., 0., 0.])
         self.declare_parameter('map_frame', 'map')
         self.declare_parameter('start_following', False)
 
@@ -104,7 +104,7 @@ class WaypointFollower(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = WaypointFollower("waypoint_follower")
+    node = WaypointFollowing("waypoint_following")
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()

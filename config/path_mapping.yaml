@@ -13,7 +13,7 @@ path_mapping:
     detections_topic: /detections
 
     # This section defines the parameters of the lidar location relative to the robot in the format [x, y, theta], meters, radians
-    front_scan_position: [0.3, 0.0, 0.0]
+    front_scan_position: [1.2, 0.0, 0.0]
     rear_scan_position: [-0.3, 0.0, 3.14]
     left_scan_position: [0.0, 0.3, 1.57]
     right_scan_position: [0.0, -0.3, -1.57]
