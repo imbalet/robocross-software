@@ -112,6 +112,11 @@ waypoint_following:
     # Flag, if true, the points start going to the topic. Start following only after starting and initializing all nodes
     start_following: false
 
+pathfinder:
+  ros__parameters:
+    use_sim_time: true
+    
+
 /costmap/costmap:
   ros__parameters:
     debug_info: true

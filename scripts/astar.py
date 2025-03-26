@@ -1,6 +1,6 @@
 import numpy as np
 import heapq
-from utils import polar_to_decart
+from util.utils import polar_to_decart
 import cv2
 
 
@@ -36,25 +36,35 @@ class Astar:
         goal_radius: float,
         car_steering: float,
         path_discrete: float,
+        max_iterations: int = 10000,
     ):
         self.robotRad = int(robot_radius)
         self.goalRad = goal_radius
         self.carSteer = car_steering
         self.pathDisc = path_discrete
+        self.max_iterations = max_iterations
 
         self.both_neighbours = [
-            (self.pathDisc, self.carSteer, 1.4),
-            (self.pathDisc, 0.0, 1.0),
             (self.pathDisc, -self.carSteer, 1.4),
+            (self.pathDisc, 0.0, 1.0),
+            (self.pathDisc, self.carSteer, 1.4),
         ]
 
-    def is_in_goal(self, current_pos: tuple, goal: tuple) -> bool:
+    def is_in_goal(self, current_pos: tuple, current_dir: float, goal: tuple) -> bool:
         dx = current_pos[0] - goal[0]
         dy = current_pos[1] - goal[1]
-        return dx**2 + dy**2 <= (self.goalRad**2)
+        position_ok = dx**2 + dy**2 <= (self.goalRad**2)
+
+        current_dir_mod = current_dir % (2 * np.pi)
+        goal_yaw_mod = goal[2] % (2 * np.pi)
+        yaw_diff = abs(current_dir_mod - goal_yaw_mod)
+        yaw_ok = yaw_diff < 0.08 or (2 * np.pi - yaw_diff) < 0.08
+
+        return position_ok and yaw_ok
 
     def get_neighbours(self, matrix, node: "Astar.Node", goal, closed_list: set):
         neighbours = []
+        goal_pos = (goal[0], goal[1])
         for r, th_add, p_w in self.both_neighbours:
             th = node.dir + th_add
             dx, dy = polar_to_decart(r, th)
@@ -68,7 +78,7 @@ class Astar:
                 continue
 
             new_cost = node.cost + p_w + matrix[node_pos[0], node_pos[1]]
-            heuristic = self.heuristic(node_pos, goal)
+            heuristic = self.heuristic(node_pos, goal_pos)
             neighbours.append(Astar.Node(node_pos, new_cost, heuristic, th, node))
         return neighbours
 
@@ -98,7 +108,10 @@ class Astar:
 
         return not np.any(col_region[mask] == self.NON_WALKABLE_WEIGHT)
 
-    def astar(self, matrix, start: tuple[int, int, float], goal: tuple[int, int]):
+    def astar(
+        self, matrix, start: tuple[int, int, float], goal: tuple[int, int, float]
+    ):
+        goal_pos = (goal[0], goal[1])
         if matrix[start[0], start[1]] >= 127 or matrix[goal[0], goal[1]] >= 127:
             return None
 
@@ -107,13 +120,21 @@ class Astar:
         cost_so_far = {}
 
         start_node = Astar.Node(
-            (start[0], start[1]), 0.0, self.heuristic(start, goal), start[2]
+            (start[0], start[1]),
+            0.0,
+            self.heuristic((start[0], start[1]), goal_pos),
+            start[2],
         )
         heapq.heappush(open_heap, start_node)
         start_key = (start_node.position, start_node.dir)
         cost_so_far[start_key] = start_node.cost
 
+        iterations = 0
         while open_heap:
+            iterations += 1
+            if iterations > self.max_iterations:
+                return None
+
             current_node = heapq.heappop(open_heap)
             current_key = (current_node.position, current_node.dir)
 
@@ -123,7 +144,7 @@ class Astar:
             ):
                 continue
 
-            if self.is_in_goal(current_node.position, goal):
+            if self.is_in_goal(current_node.position, current_node.dir, goal):
                 path = []
                 while current_node:
                     path.append((*current_node.position, current_node.dir))
@@ -173,7 +194,7 @@ if __name__ == "__main__":
     )
 
     start = (400, 399, 0)
-    goal = (301, 606)
+    goal = (301, 606, 0)  # Пример добавления конечного yaw
     path = path_finder.astar(grid, start, goal)
 
     cv2.circle(grid, (start[1], start[0]), 9, 255, -1)

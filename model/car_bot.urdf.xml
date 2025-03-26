@@ -91,9 +91,9 @@
     </link>
 
     <joint name="base_footprint_joint" type="fixed">
-        <origin xyz="0 0 -1.065" rpy="0 0 0" />
-        <parent link="chassis" />
-        <child link="base_footprint" />
+        <origin xyz="0 0 1.065" rpy="0 0 0" />
+        <parent link="base_footprint" />
+        <child link="chassis" />
     </joint>
 
 

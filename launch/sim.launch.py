@@ -29,6 +29,7 @@ def generate_launch_description():
                 "autostart": True,
                 "node_names": ["/costmap/costmap"],
                 "bond_timeout": 0.0,
+                "use_sim_time": True,
             }
         ],
     )
@@ -39,19 +40,21 @@ def generate_launch_description():
             IncludeLaunchDescription(
                 os.path.join(pkg_dir, "launch", "state_publisher.launch.py")
             ),
-            IncludeLaunchDescription(os.path.join(pkg_dir, "launch", "gz.launch.py")),
+            IncludeLaunchDescription(
+                os.path.join(pkg_dir, "launch", "robot_localization_ekf.launch.py")
+            ),
             Node(
                 package="car_bot",
                 executable="point_cloud_to_scan",
-                name="point_cloud_to_scan",
+                name="front_cloud_to_scan",
                 parameters=[os.path.join(pkg_dir, "config", "sim.yaml")],
             ),
-            Node(
-                package="car_bot",
-                executable="odometry.py",
-                name="odometry",
-                parameters=[os.path.join(pkg_dir, "config", "sim.yaml")],
-            ),
+            # Node(
+            #     package="car_bot",
+            #     executable="odometry.py",
+            #     name="odometry",
+            #     parameters=[os.path.join(pkg_dir, "config", "sim.yaml")],
+            # ),
             Node(
                 package="car_bot",
                 executable="pathfinder.py",

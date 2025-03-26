@@ -38,8 +38,11 @@ install(TARGETS
 
 ament_python_install_package(${PROJECT_NAME})
 
-file(GLOB SCRIPTS_FILES scripts/*.py)
-install(PROGRAMS ${SCRIPTS_FILES} DESTINATION lib/${PROJECT_NAME})
+install(
+    DIRECTORY scripts/
+    DESTINATION lib/${PROJECT_NAME}
+    FILE_PERMISSIONS OWNER_EXECUTE OWNER_READ
+)
 
 install(DIRECTORY
   launch
