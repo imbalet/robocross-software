@@ -63,8 +63,8 @@ TRANSMISSION_MSGS = {
     'SPotentiometer Range Error': '6',       # Выход из допустимых диапазонов потенциометра актуатора переключения влево-вправо
     'STransmission Activation Error': '7',   # Ошибка включения передачи актуатора переключения влево-вправо
 
-    'Transmission Connection Error': '8',  # Ошибка последовательного соединения
-    'Transmission Data Error': '9',  # Ошибка целостности данных последовательного соединения
+    'Transmission Connection Error': '8',    # Ошибка последовательного соединения
+    'Transmission Data Error': '9',          # Ошибка целостности данных последовательного соединения
 }
 
 

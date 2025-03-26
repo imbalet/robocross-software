@@ -4,65 +4,113 @@
 
 front_cloud_to_scan:
   ros__parameters:
-    use_sim_time: True
+    use_sim_time: true
+    frequency: 30
     frame_id: front_camera_link
     pointcloud_topic: /front_camera/points
     scan_topic: /front_camera/scan
-    frequency: 30
-    x_max: 32.0
-    x_min: 0.7
-    y_max: 20.0
-    y_min: -20.0
-    z_max: 0.0
-    z_min: -0.15
-    angle_max: 0.7
-    angle_min: -0.7
-    rays_number: 200
+    x_max: 10.0 # top boundary of the points on the X-axis, meters
+    x_min: 0.6 # bottom boundary of the points on the X-axis, meters
+    y_max: 20.0 # top boundary of the points on the Y-axis, meters
+    y_min: -20.0 # bottom boundary of the points on the Y-axis, meters
+    z_max: 0.25 # top boundary of the points on the Z-axis, meters
+    z_min: 0.2 # bottom boundary of the points on the Z-axis, meters
+    angle_max: 1.52 # top boundary of the scan, radians, meters
+    angle_min: -1.52 # bottom boundary of the scan, radians
+    rays_number: 60 # number of rays of the scan
 
 path_mapping:
   ros__parameters:
+    use_sim_time: true
     frequency: 30
-    front_scan_topic: /front_camera/scan
-    rear_scan_topic: /rear_camera/scan
-    front_scan_position: [ 2.2, 0.0, 0.0 ]
-    rear_scan_position: [ -2.2, 0.0, 0.0 ]
-    map_topic: /map
-    map_infiltration_radius: 2.5
-    map_size: 200
-    local_map_size: 40
-    map_resolution: 0.1
-    map_frame: map
-    robot_base_frame: chassis
-    odom_topic: /odom
-    goal_topic: /goal_pose
+
+    # In this section, the topics that the node subscribes to receive lidar data
+    front_scan_topic: /scan
+    rear_scan_topic: /rear_camera/scan/scan
+    left_scan_topic: /left_camera/scan/scan
+    right_scan_topic: /right_camera/scan/scan
+
+    # In this section, the topics that the node subscribes to receive environmental recognition data
+    detections_topic: /detections
+
+    # This section defines the parameters of the lidar location relative to the robot in the format [x, y, theta], meters, radians
+    front_scan_position: [1.2, 0.0, 0.0]
+    rear_scan_position: [-0.3, 0.0, 3.14]
+    left_scan_position: [0.0, 0.3, 1.57]
+    right_scan_position: [0.0, -0.3, -1.57]
+
+    # In this section, the topics to publish node messages such as:
+    # - "OccupancyGrid" message for a global environment map with the dimensions specified in the <global_map_size> parameter;
+    # - "OccupancyGrid" message for the local environment map located around the robot, with the dimensions specified in the <local_map_size> parameter;
+    # - "Path" message of the robot's route.
+    global_map_topic: /map
+    local_map_topic: /local_map
     path_topic: /path
-    path_collision_radius: 1.5
-    goal_radius: 2.
-    steering_value: 0.35
-    path_discrete: 1.5
+
+    # In this section, the topics that the node subscribes to get odometry and a goal destination
+    odom_topic: /odometry/filtered
+    goal_topic: /goal_pose
+
+    # In this section, the names of the frames are assigned:
+    # - <map_frame> to bind the global environment map
+    # - <odom_frame> for linking with a global map frame
+    # - <path_base_frame> the frame relative to which the route will be calculated, usually starting from the zero point of the robot's start, that is, <map_frame>
+    map_frame: map
+    odom_frame: odom
     path_base_frame: map
-    grid_resolution: 0.1
-    timeout: 0.2
+
+    # This section describes the parameters of the environment maps. The resolution for both maps is the same.
+    global_map_size: 200  # The size of the global environment map, meters
+    local_map_size: 32  # Size of the local environment map, meters
+    map_infiltration_radius: 2.5  # A parameter that defines the dangerous approach zones around each obstacle, meters
+    map_resolution: 0.1  # By default, the value 1.0 is equal to a map with a resolution of 1 meter. Accordingly, 0.1 is a map with a resolution of 1 decimeter.
+    publish_global_map: false # If false, the map will be published 1 time at the start, if true, the map will be published with a frequency <frequency>
+
+    # This section describes the parameters of the route planner to the goal destination
+    finder_type: hybrid_astar  # Type of path planner (astar, hybrid_astar, omni_hybrid_astar), description of the planners on the GitHub repository page
+    path_collision_radius: 2.5  # Simplified collision avoidance model, the parameter defines the radius of the circumscription circle around the robot, meters
+    goal_radius: 0.5  # The radius of the circle that will be considered the area of reaching the goal point must be 2 or more times larger than <path_discrete>, otherwise there may be problems with building a path, meters
+    path_discrete: 1.0  # The discreteness value of the path, the minimum value of the distance between two points of the constructed path, meters
+    steering_value: 0.3  # Maximum steering angle for the hybrid_astar planner, radians
+    timeout: 1.0 # The maximum time to build a path, if the planner does not have time, the path will not be published
 
 path_controller:
   ros__parameters:
+    use_sim_time: true
     frequency: 30
+
+    # The node uses a service 'GetParameters' from which it gets the ROS2 <path_state> parameter.
+    # If the parameter value is True, then the controller publishes Twist in the <cmd_topic> topic.
+    path_state_service_node: path_mapping
+
+    # Topics
     path_topic: /path
     odom_topic: /odom
     cmd_topic: /cmd_vel
-    p_steering_ratio: 3.0
-    p_speed_ratio: 1.0
-    average_speed: 1.5
+
+    # Average linear robot speed
+    average_speed: 1.0
+    # PID parameters
+    kp: 0.8
+    ki: 0.001
+    kd: 0.1
 
 waypoint_following:
   ros__parameters:
+    use_sim_time: true
     frequency: 30
-    odom_topic: /odom
+
+    # Topic
     goal_topic: /goal_pose
-    goal_radius: 5.0
-    waypoints: [20.6453, -9.80267, 0., 24.3003, -31.9225, 0., 13.7962, -46.5684, 0., 20.6453, -9.80267, 1.]
+
+    # Frame to publish waypoint pose
     map_frame: map
-    start_following: False # Начинать следование только после запуска и инициализации всех нод
+
+    # Waypoints which represents points of the route, x, y, theta
+    waypoints: [20.8, -9.5, 1., 17.7, -44.8, 1.8]
+
+    # Flag, if true, the points start going to the topic. Start following only after starting and initializing all nodes
+    start_following: false
 
 /costmap/costmap:
   ros__parameters:

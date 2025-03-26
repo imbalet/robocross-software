@@ -39,6 +39,7 @@ def generate_launch_description():
             IncludeLaunchDescription(
                 os.path.join(pkg_dir, "launch", "state_publisher.launch.py")
             ),
+            IncludeLaunchDescription(os.path.join(pkg_dir, "launch", "gz.launch.py")),
             Node(
                 package="car_bot",
                 executable="point_cloud_to_scan",

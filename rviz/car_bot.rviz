@@ -207,13 +207,13 @@ Visualization Manager:
         Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /map
+        Value: /local_map
       Update Topic:
         Depth: 5
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /map_updates
+        Value: /local_map_updates
       Use Timestamp: false
       Value: true
     - Alpha: 1
@@ -366,9 +366,9 @@ Visualization Manager:
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 5.862145900726318
-        Y: -0.525517463684082
-        Z: -0.550145149230957
+        X: 4.687704563140869
+        Y: -0.569441020488739
+        Z: -1.5446279048919678
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
