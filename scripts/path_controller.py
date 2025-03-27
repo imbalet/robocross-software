@@ -142,7 +142,7 @@ class PathController(Node):
         self.mapData = OccupancyGrid()
         self.goalData = PoseStamped()
         
-        self.ASTAR = asstar((17, 43), self.goalRad / self.mapRes, 0.3, self.pathDiscrete / self.mapRes)
+        self.ASTAR = asstar((17, 43), self.goalRad / self.mapRes, 0.3, 15)
         
         self.astar = Astar(self.pathCollisionRad / self.mapRes, self.goalRad / self.mapRes, self.steeringVal, self.pathDiscrete / self.mapRes)
         
@@ -209,7 +209,7 @@ class PathController(Node):
                 
                 # path = self.astar.astar(map_array, (*inds_r, -th1), inds_g)
 
-                path = self.ASTAR.astar(map_array, (*inds_r, -th1), (*inds_g, -th2), 50)
+                path = self.ASTAR.astar(map_array, (*inds_r, -th1), (*inds_g, -th2), 50, 50)
                 
                 # data = list(map(list(map_array)))
                 # json.dump(data, open("mm.json"))
@@ -256,7 +256,7 @@ class PathController(Node):
         self.prev_time = cur_time
         
         angle = euler_from_quaternion(pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w)[2]
-        goal_pose = path[1].pose
+        goal_pose = path[0].pose
         goal_angle = goal_pose.orientation.z
         delta_angle = goal_angle - angle
         
@@ -266,10 +266,10 @@ class PathController(Node):
         
         p_ = self.pSteeringRatio * delta_angle
         print(d)
-        return (p_ + d) if path[1].pose.position.z > 0 else -(p_ + d)
+        return (p_ + d) if path[0].pose.position.z > 0 else -(p_ + d)
 
     def p_control_speed(self, pose: Pose, path: list[PoseStamped]):
-        return self.averageSpeed if path[1].pose.position.z > 0 else -self.averageSpeed
+        return self.averageSpeed if path[0].pose.position.z > 0 else -self.averageSpeed
         # robot_x, robot_y = pose.position.x, pose.position.y
         # try:
         #     goal_x, goal_y = path[1].pose.position.x, path[1].pose.position.y

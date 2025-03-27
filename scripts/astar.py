@@ -28,6 +28,12 @@ def show(img):
     plt.show()
 
 
+def new_show(img, param = 0):
+    if param:
+        cv2.imshow("", img.astype(np.uint8))
+        cv2.waitKey(0)
+
+
 def polar_to_decart(rho, phi):
     return rho * np.cos(phi), rho * np.sin(phi)
 
@@ -82,14 +88,14 @@ class Astar():
             (self.pathDisc, self.carSteer, 1.4),
             (self.pathDisc, 0.0, 1.0),
             (self.pathDisc, -self.carSteer, 1.4),
-            (-self.pathDisc, self.carSteer, 24.0),
-            (-self.pathDisc, 0.0, 20.0),
-            (-self.pathDisc, -self.carSteer, 24.0),
+            # (-self.pathDisc, self.carSteer, 24.0),
+            # (-self.pathDisc, 0.0, 20.0),
+            # (-self.pathDisc, -self.carSteer, 24.0),
         ]
 
 
     def is_in_goal(self, start:tuple, dir:float, goal:tuple) -> bool:
-        return abs(dir - goal[2]) < 0.7 and ((pow(start[0] - goal[0], 2) + pow(start[1] - goal[1], 2)) ** 0.5) <= self.goalRad
+        return ((pow(start[0] - goal[0], 2) + pow(start[1] - goal[1], 2)) ** 0.5) <= self.goalRad
         # abs(dir - goal[2]) < 0.3 and
     
     
@@ -119,7 +125,7 @@ class Astar():
 
         box_points = cv2.boxPoints(rectangle)
         box_points = np.intp(box_points)
-        cv2.polylines(image.copy(), [box_points], isClosed=True, color=color, thickness=th)
+        cv2.polylines(image, [box_points], isClosed=True, color=color, thickness=th)
 
     
     
@@ -129,7 +135,6 @@ class Astar():
                               int(node[1] - self.area_size // 2):int(node[1] + self.area_size // 2)])
             
             Astar.__draw_tilted_rectangle(col_t, (self.area_size // 2, self.area_size // 2), *self.mask_rect_size, angle, self.mask_rect_th, 120)
-            # show(col_t)
         except cv2.error as e:
             print(e)
             return False
@@ -266,12 +271,6 @@ class Astar():
 
             
             if Astar.heuristic(current_node.position, goal) <= reeds_shepp_dist:
-                # path = self.reeds_shepp(matrix, current_node, goal, turn_radius)
-                
-                # # if path is not None:
-                # #     return path
-                
-                # print("trying find reeds sheppp path")
                 
                 def inds2coords(ind, shape = matrix.shape):
                     return ind[1], shape[0] - ind[0]
@@ -491,6 +490,6 @@ def json_data():
 if __name__ == "__main__":
     # parking()
     # main()
-    json_data()
+    # json_data()
     import cProfile
-    # cProfile.run("test()", sort="cumtime")
+    cProfile.run("test()", sort="cumtime")

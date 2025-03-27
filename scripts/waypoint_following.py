@@ -13,9 +13,9 @@ def is_in_goal(current: Odometry, goal: PoseStamped, goal_rad: float, obj):
     th1 = euler_from_quaternion(current.pose.pose.orientation.x, current.pose.pose.orientation.y, current.pose.pose.orientation.z, current.pose.pose.orientation.w)[2]
     th2 = goal.pose.orientation.z
     obj.get_logger().info(f"{th1}, {th2}")
-    if abs(th1 - th2) <= 0.3 and x2 - goal_rad < x1 < x2 + goal_rad:
-        if y2 - goal_rad < y1 < y2 + goal_rad:
-            return True
+    # if abs(th1 - th2) <= 0.3 and x2 - goal_rad < x1 < x2 + goal_rad:
+    if y2 - goal_rad < y1 < y2 + goal_rad:
+        return True
     return False
 
 

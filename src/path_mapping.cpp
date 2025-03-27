@@ -295,7 +295,7 @@ private:
       for (auto point : points)
       {
         // this->map->get_map_by_ind(point.first, point.second) = OBSTACLE_CELL;
-        map->draw_circle(point, robotColRadius / mapRes, 3, {OBSTACLE_CELL});
+        map->draw_circle(point, robotColRadius / mapRes, 40, {OBSTACLE_CELL});
       }
 
       for (auto point : points)
